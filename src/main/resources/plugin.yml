@@ -1,0 +1,18 @@
+name: GrassSimulator
+version: '1.0-SNAPSHOT'
+main: com.example.grasssimulator.Main
+api-version: '1.20'
+depend: [Vault]  # Указываем, что плагин зависит от Vault
+commands:
+  hoeshop:
+    description: Открывает магазин мотыг.
+  mo:
+    description: Выдает деньги игроку (только для админов).
+  to:
+    description: Выдает токены игроку (только для админов).
+  upgradehoe:
+    description: Открывает меню улучшения мотыги.
+  cogdafeodal:
+    description: Открывает меню ребитха.
+  createlegendarychest:
+    description: Создание лег сундука где стоит игрок
