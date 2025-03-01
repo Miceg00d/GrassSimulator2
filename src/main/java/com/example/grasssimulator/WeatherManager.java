@@ -18,12 +18,12 @@ public class WeatherManager {
             @Override
             public void run() {
                 for (World world : plugin.getServer().getWorlds()) {
-                    world.setStorm(false); // Отключаем дождь
-                    world.setThundering(false); // Отключаем грозу
-                    world.setClearWeatherDuration(Integer.MAX_VALUE); // Устанавливаем солнечную погоду навсегда
-                    world.setTime(6000); // Устанавливаем время на день (6000 тиков = полдень)
+                    world.setStorm(false);
+                    world.setThundering(false);
+                    world.setClearWeatherDuration(Integer.MAX_VALUE);
+                    world.setTime(6000);
                 }
             }
-        }.runTaskTimer(plugin, 0, 20 * 60 * 5); // Проверяем каждые 5 минут
+        }.runTaskTimer(plugin, 0, 20 * 60 * 5);
     }
 }

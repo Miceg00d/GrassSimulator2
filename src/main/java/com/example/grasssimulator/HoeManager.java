@@ -15,56 +15,51 @@ import java.util.UUID;
 
 public class HoeManager {
 
-    private HashMap<UUID, List<String>> purchasedHoes; // Хранит купленные мотыги для каждого игрока
-    private HashMap<UUID, String> activeHoes; // Хранит активную мотыгу для каждого игрока
-    private HashMap<UUID, BigDecimal> playerTokens; // Используем BigDecimal для токенов
-    private HashMap<UUID, Integer> hoeLevels; // Уровни мотыг
-    private Main plugin; // Добавляем ссылку на Main
+    private HashMap<UUID, List<String>> purchasedHoes;
+    private HashMap<UUID, String> activeHoes;
+    private HashMap<UUID, BigDecimal> playerTokens;
+    private HashMap<UUID, Integer> hoeLevels;
+    private Main plugin;
 
     public HoeManager(Main plugin, HashMap<UUID, Integer> hoeLevels) {
         this.plugin = plugin;
-        this.hoeLevels = hoeLevels; // Инициализируем hoeLevels
+        this.hoeLevels = hoeLevels;
         this.purchasedHoes = new HashMap<>();
         this.activeHoes = new HashMap<>();
         this.playerTokens = new HashMap<>();
     }
 
-    // Проверка, куплена ли мотыга
     public boolean hasHoe(Player player, String hoeType) {
         UUID playerId = player.getUniqueId();
         return purchasedHoes.containsKey(playerId) && purchasedHoes.get(playerId).contains(hoeType);
     }
 
-    // Добавление мотыги в список купленных
     public void addPurchasedHoe(Player player, String hoeType) {
         UUID playerId = player.getUniqueId();
         purchasedHoes.computeIfAbsent(playerId, k -> new ArrayList<>()).add(hoeType);
     }
 
-    // Получение списка купленных мотыг
     public List<String> getPurchasedHoes(Player player) {
         UUID playerId = player.getUniqueId();
         return purchasedHoes.getOrDefault(playerId, new ArrayList<>());
     }
 
-    // Получение активной мотыги игрока
     public String getActiveHoe(UUID playerId) {
-        return activeHoes.getOrDefault(playerId, "Обычная"); // Возвращаем активную мотыгу или "Обычная" по умолчанию
+        return activeHoes.getOrDefault(playerId, "Обычная");
     }
 
     public int getHoeLevel(UUID playerId) {
-        return hoeLevels.getOrDefault(playerId, 1); // Возвращаем уровень мотыги или 1 по умолчанию
+        return hoeLevels.getOrDefault(playerId, 1);
     }
 
     public void setHoeLevel(UUID playerId, int level) {
-        hoeLevels.put(playerId, level); // Устанавливаем уровень мотыги
+        hoeLevels.put(playerId, level);
     }
 
-    // Выдача мотыги игроку
     public void giveHoe(Player player, String hoeType, int hoeLevel) {
-        ItemStack hoe = createHoe(hoeType, hoeLevel); // Создаем мотыгу с указанным уровнем
-        player.getInventory().setItem(0, hoe); // Выдаем в первый слот
-        activeHoes.put(player.getUniqueId(), hoeType); // Устанавливаем активную мотыгу
+        ItemStack hoe = createHoe(hoeType, hoeLevel);
+        player.getInventory().setItem(0, hoe);
+        activeHoes.put(player.getUniqueId(), hoeType);
         player.sendMessage("§aТеперь вы используете мотыгу: " + hoeType);
     }
 
@@ -84,32 +79,28 @@ public class HoeManager {
                 break;
         }
 
-        // Добавляем уровень мотыги в Lore
         List<String> lore = new ArrayList<>();
-        lore.add("§§c§lУровень: " + hoeLevel); // Уровень мотыги
+        lore.add("§c§lУровень: " + hoeLevel);
         meta.setLore(lore);
 
         hoe.setItemMeta(meta);
         return hoe;
     }
 
-    // Применение эффектов мотыги
     public void applyHoeEffects(Player player) {
         String hoeType = activeHoes.get(player.getUniqueId());
 
         if (hoeType != null) {
             switch (hoeType) {
                 case "Бустер":
-                    player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200, 5)); // 10 секунд скорости
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200, 5));
                     break;
                 case "Легенда":
-                    // Эффект уже учитывается в основном коде (2x множитель)
                     break;
             }
         }
     }
 
-    // Покупка мотыги
     public boolean buyHoe(Player player, String hoeType, BigDecimal cost) {
         UUID playerId = player.getUniqueId();
         BigDecimal tokens = playerTokens.getOrDefault(playerId, BigDecimal.ZERO);
@@ -118,8 +109,8 @@ public class HoeManager {
             playerTokens.put(playerId, tokens.subtract(cost));
             plugin.setTokens(playerId, tokens.subtract(cost));
 
-            int hoeLevel = getHoeLevel(playerId); // Получаем текущий уровень мотыги
-            giveHoe(player, hoeType, hoeLevel); // Передаем уровень мотыги
+            int hoeLevel = getHoeLevel(playerId);
+            giveHoe(player, hoeType, hoeLevel);
             return true;
         } else {
             player.sendMessage("§cУ вас недостаточно токенов для покупки этой мотыги!");
@@ -127,19 +118,16 @@ public class HoeManager {
         }
     }
 
-    // Установка токенов (для админов)
     public void setTokens(Player player, BigDecimal amount) {
         UUID playerId = player.getUniqueId();
         playerTokens.put(playerId, amount);
         plugin.setTokens(playerId, amount);
     }
 
-    // Получение токенов
     public BigDecimal getTokens(Player player) {
         return playerTokens.getOrDefault(player.getUniqueId(), BigDecimal.ZERO);
     }
 
-    // Метод для проверки, является ли мотыга защищённой
     public boolean isProtectedHoe(ItemStack item) {
         if (item != null && item.getType().toString().endsWith("_HOE")) {
             ItemMeta meta = item.getItemMeta();
@@ -147,7 +135,7 @@ public class HoeManager {
                 String displayName = meta.getDisplayName();
                 return displayName.equals("§6Мотыга-Бустер") ||
                         displayName.equals("§cМотыга-Легенда") ||
-                        displayName.equals("§fОбычная мотыга"); // Добавляем обычную мотыгу
+                        displayName.equals("§fОбычная мотыга");
             }
         }
         return false;

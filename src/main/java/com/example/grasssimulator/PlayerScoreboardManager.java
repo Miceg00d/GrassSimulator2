@@ -1,6 +1,5 @@
 package com.example.grasssimulator;
 
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -10,18 +9,14 @@ import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.ScoreboardManager;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.UUID;
 
 public class PlayerScoreboardManager {
 
     private Main plugin;
-    private Economy economy;
 
-    // Добавляем конструктор с двумя аргументами
-    public PlayerScoreboardManager(Main plugin, Economy economy) {
+    public PlayerScoreboardManager(Main plugin) {
         this.plugin = plugin;
-        this.economy = economy;
     }
 
     public void updateScoreboard(Player player) {
@@ -36,7 +31,7 @@ public class PlayerScoreboardManager {
         objective.setDisplaySlot(org.bukkit.scoreboard.DisplaySlot.SIDEBAR);
 
         UUID playerId = player.getUniqueId();
-        BigDecimal balance = new BigDecimal(economy.getBalance(player));
+        BigDecimal balance = plugin.getCustomEconomy().getBalance(playerId);
         int hoeLevel = plugin.getHoeLevel(playerId);
         int rebirthLevel = plugin.getRebirthLevel(playerId);
         BigDecimal tokens = plugin.getTokens(playerId);
@@ -58,7 +53,7 @@ public class PlayerScoreboardManager {
         Score score3 = objective.getScore(ChatColor.YELLOW + "Токены: " + formattedTokens);
         score3.setScore(2);
 
-        Score score4 = objective.getScore(ChatColor.RED + "Множитель: x" + formattedMultiplier); // Используем отформатированный множитель
+        Score score4 = objective.getScore(ChatColor.RED + "Множитель: x" + formattedMultiplier);
         score4.setScore(1);
 
         player.setScoreboard(board);

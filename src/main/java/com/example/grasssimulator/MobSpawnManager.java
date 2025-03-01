@@ -13,6 +13,6 @@ public class MobSpawnManager implements Listener {
 
     @EventHandler
     public void onCreatureSpawn(CreatureSpawnEvent event) {
-        event.setCancelled(true); // Отключаем спавн мобов
+        event.setCancelled(true);
     }
 }

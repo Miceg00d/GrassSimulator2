@@ -23,17 +23,17 @@ public class CustomHoeManager implements Listener {
         ItemStack hoe = new ItemStack(Material.DIAMOND_HOE);
         ItemMeta meta = hoe.getItemMeta();
         meta.setDisplayName("§6Битошка");
-        meta.setUnbreakable(true); // Нельзя сломать
+        meta.setUnbreakable(true);
         hoe.setItemMeta(meta);
 
-        player.getInventory().setItem(0, hoe); // Выдаем в первый слот
+        player.getInventory().setItem(0, hoe);
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (event.getCurrentItem() != null && event.getCurrentItem().getItemMeta() != null &&
                 event.getCurrentItem().getItemMeta().getDisplayName().equals("§6Битошка")) {
-            event.setCancelled(true); // Запрещаем перемещение
+            event.setCancelled(true);
         }
     }
 
@@ -41,7 +41,7 @@ public class CustomHoeManager implements Listener {
     public void onPlayerDropItem(PlayerDropItemEvent event) {
         if (event.getItemDrop().getItemStack().getItemMeta() != null &&
                 event.getItemDrop().getItemStack().getItemMeta().getDisplayName().equals("§6Битошка")) {
-            event.setCancelled(true); // Запрещаем выкидывание
+            event.setCancelled(true);
         }
     }
 }

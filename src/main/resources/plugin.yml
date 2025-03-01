@@ -2,7 +2,6 @@ name: GrassSimulator
 version: '1.0-SNAPSHOT'
 main: com.example.grasssimulator.Main
 api-version: '1.20'
-depend: [Vault]  # Указываем, что плагин зависит от Vault
 commands:
   hoeshop:
     description: Открывает магазин мотыг.
@@ -16,3 +15,5 @@ commands:
     description: Открывает меню ребитха.
   createlegendarychest:
     description: Создание лег сундука где стоит игрок
+  balance:
+    description: Показывает текущий баланс игрока.

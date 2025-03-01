@@ -15,9 +15,9 @@ public class HungerManager implements Listener {
     @EventHandler
     public void onFoodLevelChange(FoodLevelChangeEvent event) {
         if (event.getEntity() instanceof Player) {
-            event.setCancelled(true); // Отключаем изменение уровня голода
+            event.setCancelled(true);
             Player player = (Player) event.getEntity();
-            player.setFoodLevel(20); // Устанавливаем уровень голода на максимум
+            player.setFoodLevel(20);
         }
     }
 }

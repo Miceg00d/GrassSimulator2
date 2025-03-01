@@ -1,6 +1,5 @@
 package com.example.grasssimulator;
 
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -22,17 +21,15 @@ import java.util.UUID;
 public class HoeUpgradeGUI implements CommandExecutor, Listener {
 
     private Main plugin;
-    private Economy economy;
     private HashMap<UUID, Integer> hoeLevels;
     private PlayerScoreboardManager scoreboardManager;
-    private HoeManager hoeManager; // Добавляем hoeManager
+    private HoeManager hoeManager;
 
-    public HoeUpgradeGUI(Main plugin, Economy economy, HashMap<UUID, Integer> hoeLevels, PlayerScoreboardManager scoreboardManager, HoeManager hoeManager) {
+    public HoeUpgradeGUI(Main plugin, HashMap<UUID, Integer> hoeLevels, PlayerScoreboardManager scoreboardManager, HoeManager hoeManager) {
         this.plugin = plugin;
-        this.economy = economy;
         this.hoeLevels = hoeLevels;
         this.scoreboardManager = scoreboardManager;
-        this.hoeManager = hoeManager; // Инициализируем hoeManager
+        this.hoeManager = hoeManager;
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
@@ -67,13 +64,11 @@ public class HoeUpgradeGUI implements CommandExecutor, Listener {
         ItemMeta upgradeMeta = upgradeItem.getItemMeta();
 
         if (hoeLevel >= 200) {
-            // Если уровень мотыги максимальный, показываем сообщение вместо цены
             upgradeMeta.setDisplayName("§aМаксимальный уровень");
             upgradeMeta.setLore(Arrays.asList(
                     "§cВы достигли максимального уровня мотыги!"
             ));
         } else {
-
             upgradeMeta.setDisplayName("§aУлучшить мотыгу (§6Стоимость: " + Main.formatNumber(cost) + "§a)");
         }
         upgradeItem.setItemMeta(upgradeMeta);
@@ -91,24 +86,23 @@ public class HoeUpgradeGUI implements CommandExecutor, Listener {
             UUID playerId = player.getUniqueId();
             int hoeLevel = hoeLevels.getOrDefault(playerId, 1);
 
-            // Проверяем, не превышен ли максимальный уровень (200)
             if (hoeLevel >= 200) {
                 player.sendMessage("§cВы достигли максимального уровня мотыги!");
                 return;
             }
 
-            // Рассчитываем стоимость улучшения
             BigDecimal cost = new BigDecimal("100").multiply(new BigDecimal("3").pow(hoeLevel - 1));
 
+            if (event.getSlot() == 13) {
+                BigDecimal playerBalance = plugin.getCustomEconomy().getBalance(playerId);
 
-            if (event.getSlot() == 13) { // Проверяем, что клик был по кнопке улучшения
-                if (economy.has(player, cost.doubleValue())) { // Проверяем, хватает ли денег
-                    economy.withdrawPlayer(player, cost.doubleValue()); // Списываем стоимость улучшения
-                    hoeLevels.put(playerId, hoeLevel + 1); // Увеличиваем уровень мотыги
-                    hoeManager.giveHoe(player, hoeManager.getActiveHoe(playerId), hoeLevel + 1); // Обновляем мотыгу в инвентаре
+                if (playerBalance.compareTo(cost) >= 0) {
+                    plugin.getCustomEconomy().withdraw(playerId, cost);
+                    hoeLevels.put(playerId, hoeLevel + 1);
+                    hoeManager.giveHoe(player, hoeManager.getActiveHoe(playerId), hoeLevel + 1);
                     player.sendMessage("§aВаша мотыга улучшена до уровня " + (hoeLevel + 1) + "!");
-                    openUpgradeMenu(player); // Обновляем GUI
-                    scoreboardManager.updateScoreboard(player); // Обновляем скорборд
+                    openUpgradeMenu(player);
+                    scoreboardManager.updateScoreboard(player);
                 } else {
                     player.sendMessage("§cУ вас недостаточно монет для улучшения!");
                 }

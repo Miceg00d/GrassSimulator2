@@ -1,6 +1,5 @@
 package com.example.grasssimulator;
 
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -11,23 +10,21 @@ import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.math.BigDecimal;;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.UUID;
 
 public class Main extends JavaPlugin implements Listener {
 
-    private HashMap<UUID, BigDecimal> playerBalances = new HashMap<>();
     private HashMap<UUID, Integer> hoeLevels = new HashMap<>();
     private HashMap<UUID, Integer> rebirthLevels = new HashMap<>();
-    private HashMap<UUID, BigDecimal> tokens = new HashMap<>(); // Используем BigDecimal для токенов
+    private HashMap<UUID, BigDecimal> tokens = new HashMap<>();
     private HashMap<Block, UUID> brokenBlocks = new HashMap<>();
-    private Economy economy;
+    private CustomEconomy customEconomy;
     private PlayerScoreboardManager scoreboardManager;
     private WeatherManager weatherManager;
     private MobSpawnManager mobSpawnManager;
@@ -36,44 +33,40 @@ public class Main extends JavaPlugin implements Listener {
     private HungerManager hungerManager;
     private HoeManager hoeManager;
     private HoeShopGUI hoeShopGUI;
-    private LegendaryChestManager legendaryChestManager; // Добавляем менеджер легендарных сундуков
-    private Random random = new Random(); // Для генерации случайных чисел
+    private LegendaryChestManager legendaryChestManager;
+    private Random random = new Random();
 
     @Override
     public void onEnable() {
-        if (!setupEconomy()) {
-            getLogger().severe("Vault не найден! Плагин будет отключен.");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
-        Bukkit.getPluginManager().registerEvents(this, this);
+        customEconomy = new CustomEconomy();
 
         // Инициализация менеджеров
-        scoreboardManager = new PlayerScoreboardManager(this, economy);
+        scoreboardManager = new PlayerScoreboardManager(this);
         weatherManager = new WeatherManager(this);
         mobSpawnManager = new MobSpawnManager(this);
         customHoeManager = new CustomHoeManager(this);
-        hoeManager = new HoeManager(this, hoeLevels); // Передаем this и hoeLevels
-        rebirthManager = new RebirthManager(this, economy, rebirthLevels, tokens, hoeLevels, scoreboardManager);
+        hoeManager = new HoeManager(this, hoeLevels);
+        rebirthManager = new RebirthManager(this, rebirthLevels, tokens, hoeLevels, scoreboardManager);
         hungerManager = new HungerManager(this);
         hoeShopGUI = new HoeShopGUI(this, hoeManager, scoreboardManager);
-        // Передаем this (Main) и economy в LegendaryChestManager
-        legendaryChestManager = new LegendaryChestManager(this, economy);
+        legendaryChestManager = new LegendaryChestManager(this);
 
-        // Создание легендарного сундука на определённых координатах
+        // Создание легендарного сундука на координатах
         Location chestLocation = new Location(Bukkit.getWorld("world"), 112, 103, -117); // Пример координат
         legendaryChestManager.createLegendaryChest(chestLocation);
 
-        // Регистрация HoeListener
+        // Регистрация событий
+        getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new HoeListener(hoeManager), this);
 
         // Регистрация команд
-        getCommand("upgradehoe").setExecutor(new HoeUpgradeGUI(this, economy, hoeLevels, scoreboardManager, hoeManager)); // Передаем hoeManager
+        getCommand("upgradehoe").setExecutor(new HoeUpgradeGUI(this, hoeLevels, scoreboardManager, hoeManager));
         getCommand("cogdafeodal").setExecutor(rebirthManager);
         getCommand("hoeshop").setExecutor(hoeShopGUI);
-        getCommand("mo").setExecutor(new AdminCommands(this, economy, hoeManager, scoreboardManager)); // Передаем this (Main)
-        getCommand("to").setExecutor(new AdminCommands(this, economy, hoeManager, scoreboardManager)); // Передаем this (Main)
-        getCommand("createlegendarychest").setExecutor(new CreateLegendaryChestCommand(legendaryChestManager)); // Регистрируем команду для создания сундуков
+        getCommand("mo").setExecutor(new AdminCommands(this, hoeManager, scoreboardManager));
+        getCommand("to").setExecutor(new AdminCommands(this, hoeManager, scoreboardManager));
+        getCommand("createlegendarychest").setExecutor(new CreateLegendaryChestCommand(legendaryChestManager));
+        getCommand("balance").setExecutor(new BalanceCommand(this));
 
         getLogger().info("GrassSimulator enabled!");
     }
@@ -83,27 +76,11 @@ public class Main extends JavaPlugin implements Listener {
         getLogger().info("GrassSimulator disabled!");
     }
 
-    private boolean setupEconomy() {
-        RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
-        if (rsp == null) {
-            getLogger().severe("Vault не найден! Плагин будет отключен.");
-            return false;
-        }
-        economy = rsp.getProvider();
-        return economy != null;
-    }
-
-    // Метод для обновления токенов
-    public void setTokens(UUID playerId, BigDecimal amount) {
-        tokens.put(playerId, amount);
-    }
-
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         Block block = event.getBlock();
         ItemStack item = player.getInventory().getItemInMainHand();
-
 
         if (block.getType() == Material.GRASS && item.getType().toString().endsWith("_HOE")) {
             event.setDropItems(false);
@@ -112,23 +89,29 @@ public class Main extends JavaPlugin implements Listener {
             int hoeLevel = hoeLevels.getOrDefault(playerId, 1);
             int rebirthLevel = rebirthLevels.getOrDefault(playerId, 0);
 
-            // Учитываем множитель мотыги-легенды
-            String activeHoe = hoeManager.getActiveHoe(playerId);
             BigDecimal hoeMultiplier = new BigDecimal("2").pow(hoeLevel);
             BigDecimal rebirthMultiplier = new BigDecimal(rebirthLevel + 1);
             BigDecimal totalMultiplier = hoeMultiplier.multiply(rebirthMultiplier);
 
-            if (activeHoe != null && activeHoe.equals("Легенда")) {
+            if (hoeManager.getActiveHoe(playerId).equals("Легенда")) {
                 totalMultiplier = totalMultiplier.multiply(new BigDecimal("2"));
             }
 
             BigDecimal baseIncome = new BigDecimal("10");
             BigDecimal money = totalMultiplier.multiply(baseIncome);
 
-            economy.depositPlayer(player, money.doubleValue());
+            // Проверяем, не превысит ли новый баланс максимальное значение
+            BigDecimal currentBalance = customEconomy.getBalance(playerId);
+            BigDecimal newBalance = currentBalance.add(money);
+
+            if (newBalance.compareTo(CustomEconomy.getMaxBalance()) > 0) {
+                player.sendMessage("§cВы достигли максимального баланса (999.9az)!");
+                return;
+            }
+
+            customEconomy.deposit(playerId, money);
             player.sendMessage("§aВы получили " + Main.formatNumber(money) + " монет!");
 
-            // Применение эффектов мотыги
             hoeManager.applyHoeEffects(player);
 
             player.spawnParticle(Particle.VILLAGER_HAPPY, block.getLocation().add(0.5, 0.5, 0.5), 10, 0.3, 0.3, 0.3, 0.1);
@@ -143,10 +126,10 @@ public class Main extends JavaPlugin implements Listener {
                 }
             }.runTaskLater(this, 40);
 
-            scoreboardManager.updateScoreboard(player); // Обновляем скорборд
+            scoreboardManager.updateScoreboard(player);
 
             // Шанс 0.01% на выпадение ключа
-            if (random.nextDouble() < 1) {
+            if (random.nextDouble() < 0.1) {
                 ItemStack key = new ItemStack(Material.TRIPWIRE_HOOK);
                 ItemMeta meta = key.getItemMeta();
                 meta.setDisplayName("§aКлюч от сундука");
@@ -155,24 +138,23 @@ public class Main extends JavaPlugin implements Listener {
                 player.getInventory().addItem(key);
                 player.sendMessage("§aВам выпал ключ от легендарного сундука!");
             }
-
         } else {
-            event.setCancelled(true); // Запрещаем ломать что-либо кроме травы
+            event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onHungerDeplete(PlayerItemDamageEvent event) {
         if (event.getItem().getType().toString().endsWith("_HOE")) {
-            event.setCancelled(true); // Отключаем трату голода
+            event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        customHoeManager.giveCustomHoe(player); // Выдаем кастомную мотыгу
-        hoeManager.giveHoe(player, "Обычная", 1); // Выдаем обычную мотыгу с уровнем 1
+        customHoeManager.giveCustomHoe(player);
+        hoeManager.giveHoe(player, "Обычная", 1);
     }
 
     public static String formatNumber(BigDecimal number) {
@@ -180,7 +162,7 @@ public class Main extends JavaPlugin implements Listener {
         int suffixIndex = 0;
 
         while (number.compareTo(new BigDecimal("999.9")) >= 0 && suffixIndex < suffixes.length - 1) {
-            number = number.divide(new BigDecimal("999.9"), 2, BigDecimal.ROUND_HALF_UP);
+            number = number.divide(new BigDecimal("1000"), 2, BigDecimal.ROUND_HALF_UP);
             suffixIndex++;
         }
 
@@ -194,29 +176,19 @@ public class Main extends JavaPlugin implements Listener {
     public BigDecimal getTokens(UUID playerId) {
         return tokens.getOrDefault(playerId, BigDecimal.ZERO);
     }
-
-    // Метод для получения уровня мотыги
-    public int getHoeLevel(UUID playerId) {
-        return hoeLevels.getOrDefault(playerId, 1); // Возвращаем уровень мотыги или 1 по умолчанию
+    public void setTokens(UUID playerId, BigDecimal amount) {
+        tokens.put(playerId, amount);
     }
 
-    // Метод для получения экономики (для использования в LegendaryChestManager)
-    public Economy getEconomy() {
-        return economy;
+    public int getHoeLevel(UUID playerId) {
+        return hoeLevels.getOrDefault(playerId, 1);
+    }
+
+    public CustomEconomy getCustomEconomy() {
+        return customEconomy;
     }
 
     public PlayerScoreboardManager getScoreboardManager() {
         return scoreboardManager;
     }
-    public BigDecimal getBalance(UUID playerId) {
-        return playerBalances.getOrDefault(playerId, BigDecimal.ZERO);
-    }
-
-    public void setBalance(UUID playerId, BigDecimal balance) {
-        playerBalances.put(playerId, balance);
-        // Синхронизируем с Vault
-        economy.withdrawPlayer(Bukkit.getOfflinePlayer(playerId), economy.getBalance(Bukkit.getOfflinePlayer(playerId)));
-        economy.depositPlayer(Bukkit.getOfflinePlayer(playerId), balance.doubleValue());
-    }
-
 }

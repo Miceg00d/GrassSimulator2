@@ -99,12 +99,12 @@ public class HoeShopGUI implements CommandExecutor, Listener {
 
                 if (clickedItem != null && clickedItem.getType().toString().endsWith("_HOE")) {
                     UUID playerId = player.getUniqueId();
-                    int hoeLevel = hoeManager.getHoeLevel(playerId); // Получаем уровень мотыги игрока
+                    int hoeLevel = hoeManager.getHoeLevel(playerId);
 
                     switch (event.getSlot()) {
                         case 2: // Мотыга-Бустер
                             if (hoeManager.hasHoe(player, "Бустер")) {
-                                hoeManager.giveHoe(player, "Бустер", hoeLevel); // Выдаем мотыгу с текущим уровнем
+                                hoeManager.giveHoe(player, "Бустер", hoeLevel);
                                 player.sendMessage("§aВы выбрали мотыгу-бустер!");
                             } else {
                                 if (hoeManager.buyHoe(player, "Бустер", new BigDecimal("14999"))) {
@@ -119,7 +119,7 @@ public class HoeShopGUI implements CommandExecutor, Listener {
                             break;
                         case 6: // Мотыга-Легенда
                             if (hoeManager.hasHoe(player, "Легенда")) {
-                                hoeManager.giveHoe(player, "Легенда", hoeLevel); // Выдаем мотыгу с текущим уровнем
+                                hoeManager.giveHoe(player, "Легенда", hoeLevel);
                                 player.sendMessage("§aВы выбрали мотыгу-легенду!");
                             } else {
                                 if (hoeManager.buyHoe(player, "Легенда", new BigDecimal("150000"))) {

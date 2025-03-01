@@ -14,22 +14,20 @@ public class HoeListener implements Listener {
         this.hoeManager = hoeManager;
     }
 
-    // Запрет выкидывания мотыг
     @EventHandler
     public void onPlayerDropItem(PlayerDropItemEvent event) {
         ItemStack item = event.getItemDrop().getItemStack();
-        if (hoeManager.isProtectedHoe(item)) { // Проверяем, является ли предмет защищённой мотыгой
+        if (hoeManager.isProtectedHoe(item)) {
             event.setCancelled(true);
             event.getPlayer().sendMessage("§cВы не можете выкинуть эту мотыгу!");
         }
     }
 
-    // Запрет перемещения мотыг в инвентаре
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         ItemStack clickedItem = event.getCurrentItem();
         if (clickedItem != null && hoeManager.isProtectedHoe(clickedItem)) {
-            event.setCancelled(true); // Запрещаем перемещение защищённых мотыг
+            event.setCancelled(true);
             event.getWhoClicked().sendMessage("§cВы не можете перемещать эту мотыгу!");
         }
     }

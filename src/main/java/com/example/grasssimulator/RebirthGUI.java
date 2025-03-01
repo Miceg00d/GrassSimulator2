@@ -1,6 +1,5 @@
 package com.example.grasssimulator;
 
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -12,21 +11,20 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.UUID;
 
 public class RebirthGUI implements Listener {
 
     private Main plugin;
-    private Economy economy;
     private HashMap<UUID, Integer> rebirthLevels;
     private HashMap<UUID, BigDecimal> tokens;
     private HashMap<UUID, Integer> hoeLevels;
     private PlayerScoreboardManager scoreboardManager;
 
-    public RebirthGUI(Main plugin, Economy economy, HashMap<UUID, Integer> rebirthLevels, HashMap<UUID, BigDecimal> tokens, HashMap<UUID, Integer> hoeLevels, PlayerScoreboardManager scoreboardManager) {
+    public RebirthGUI(Main plugin, HashMap<UUID, Integer> rebirthLevels, HashMap<UUID, BigDecimal> tokens, HashMap<UUID, Integer> hoeLevels, PlayerScoreboardManager scoreboardManager) {
         this.plugin = plugin;
-        this.economy = economy;
         this.rebirthLevels = rebirthLevels;
         this.tokens = tokens;
         this.hoeLevels = hoeLevels;
@@ -39,7 +37,6 @@ public class RebirthGUI implements Listener {
 
         UUID playerId = player.getUniqueId();
         int rebirthLevel = rebirthLevels.getOrDefault(playerId, 0);
-        // Используем BigInteger для расчетов
         BigDecimal cost = new BigDecimal("5000000").multiply(new BigDecimal("2").pow(rebirthLevel));
 
         ItemStack infoItem = new ItemStack(Material.PAPER);
@@ -68,34 +65,21 @@ public class RebirthGUI implements Listener {
             BigDecimal cost = new BigDecimal("5000000").multiply(new BigDecimal("2").pow(rebirthLevel));
 
             if (event.getSlot() == 13) {
-                BigDecimal playerBalance = plugin.getBalance(playerId);
-
-                // Логируем баланс до ребитха
-                plugin.getLogger().info("Баланс игрока " + player.getName() + " до ребитха: " + playerBalance);
+                BigDecimal playerBalance = plugin.getCustomEconomy().getBalance(playerId);
 
                 if (playerBalance.compareTo(cost) >= 0) {
-                    // Обнуляем баланс игрока
-                    plugin.setBalance(playerId, BigDecimal.ZERO);
-
-                    // Увеличиваем уровень ребитха
+                    plugin.getCustomEconomy().withdraw(playerId, cost);
                     rebirthLevels.put(playerId, rebirthLevel + 1);
 
-                    // Выдаем токены за ребитх
                     BigDecimal tokensEarned = new BigDecimal("100").add(new BigDecimal(rebirthLevel * 75));
                     tokens.put(playerId, tokens.getOrDefault(playerId, BigDecimal.ZERO).add(tokensEarned));
+                    plugin.setTokens(playerId, tokens.get(playerId)); // Используем новый метод
 
-                    // Сбрасываем уровень мотыги до 1
                     hoeLevels.put(playerId, 1);
 
-                    // Сообщаем игроку
                     player.sendMessage("§aВы совершили ребитх! Теперь у вас " + (rebirthLevel + 1) + " ребитхов.");
                     player.closeInventory();
-
-                    // Обновляем скорборд
                     scoreboardManager.updateScoreboard(player);
-
-                    // Логируем баланс после ребитха
-                    plugin.getLogger().info("Баланс игрока " + player.getName() + " после ребитха: " + plugin.getBalance(playerId));
                 } else {
                     player.sendMessage("§cУ вас недостаточно монет для ребитха!");
                 }

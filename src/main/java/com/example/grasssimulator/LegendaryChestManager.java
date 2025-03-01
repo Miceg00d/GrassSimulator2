@@ -1,6 +1,5 @@
 package com.example.grasssimulator;
 
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -23,34 +22,28 @@ import java.util.Random;
 public class LegendaryChestManager implements Listener {
 
     private Main plugin;
-    private Economy economy; // Добавляем поле economy
     private Random random;
-    private Map<Location, Boolean> chestLocations; // Хранит координаты сундуков
+    private Map<Location, Boolean> chestLocations;
 
-    public LegendaryChestManager(Main plugin, Economy economy) {
-        this.plugin = plugin; // Сохраняем ссылку на Main
-        this.economy = economy;
+    public LegendaryChestManager(Main plugin) {
+        this.plugin = plugin;
         this.random = new Random();
         this.chestLocations = new HashMap<>();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
-    // Метод для создания легендарного сундука на определённых координатах
     public void createLegendaryChest(Location location) {
-        location.getBlock().setType(Material.CHEST); // Устанавливаем сундук
-        chestLocations.put(location, true); // Добавляем сундук в список
+        location.getBlock().setType(Material.CHEST);
+        chestLocations.put(location, true);
     }
 
-    // Метод для проверки, является ли блок легендарным сундуком
     private boolean isLegendaryChest(Location location) {
         return chestLocations.containsKey(location);
     }
 
-    // Метод для открытия GUI с информацией о наградах
     private void openChestInfoGUI(Player player) {
         Inventory gui = Bukkit.createInventory(player, 27, "§6Легендарный сундук");
 
-        // Добавляем информацию о наградах
         ItemStack infoItem = new ItemStack(Material.PAPER);
         ItemMeta meta = infoItem.getItemMeta();
         meta.setDisplayName("§aВозможные награды:");
@@ -59,63 +52,48 @@ public class LegendaryChestManager implements Listener {
                 "§7+10% к балансу"
         ));
         infoItem.setItemMeta(meta);
-        gui.setItem(13, infoItem); // Размещаем информацию в центре GUI
+        gui.setItem(13, infoItem);
 
         player.openInventory(gui);
     }
 
-    // Метод для выдачи случайной награды
     private void giveRandomReward(Player player) {
-        if (economy == null) {
-            plugin.getLogger().severe("Economy не инициализирован!"); // Используем plugin.getLogger()
-            return;
-        }
-
-        // Получаем текущий баланс игрока как BigDecimal
-        BigDecimal balance = new BigDecimal(economy.getBalance(player));
-
-        // Логируем баланс до выдачи награды
-        plugin.getLogger().info("Баланс игрока " + player.getName() + " до открытия сундука: " + balance);
-
-        // Рассчитываем награду (5% или 10%)
+        BigDecimal balance = plugin.getCustomEconomy().getBalance(player.getUniqueId());
         BigDecimal rewardMultiplier = random.nextDouble() < 0.05 ? new BigDecimal("0.10") : new BigDecimal("0.05");
         BigDecimal reward = balance.multiply(rewardMultiplier);
 
-        // Выдаем награду (добавляем к текущему балансу)
-        economy.depositPlayer(player, reward.doubleValue());
+        BigDecimal newBalance = balance.add(reward);
 
-        // Сообщаем игроку о награде
+        if (newBalance.compareTo(CustomEconomy.getMaxBalance()) > 0) {
+            player.sendMessage("§cВы достигли максимального баланса (999.9az)!");
+            return;
+        }
+
+        plugin.getCustomEconomy().deposit(player.getUniqueId(), reward);
         player.sendMessage("§aВы получили +" + rewardMultiplier.multiply(new BigDecimal("100")) + "% к балансу: " + Main.formatNumber(reward) + " монет!");
 
-        // Обновляем скорборд
         plugin.getScoreboardManager().updateScoreboard(player);
-
-        // Логируем баланс после выдачи награды
-        plugin.getLogger().info("Баланс игрока " + player.getName() + " после открытия сундука: " + economy.getBalance(player));
     }
 
-    // Обработка кликов по сундуку
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null && event.getClickedBlock().getType() == Material.CHEST) {
             Location location = event.getClickedBlock().getLocation();
 
             if (isLegendaryChest(location)) {
-                event.setCancelled(true); // Отменяем открытие сундука
-
+                event.setCancelled(true);
                 Player player = event.getPlayer();
-                openChestInfoGUI(player); // Открываем GUI с информацией о наградах
+                openChestInfoGUI(player);
             }
         } else if (event.getAction() == Action.LEFT_CLICK_BLOCK && event.getClickedBlock() != null && event.getClickedBlock().getType() == Material.CHEST) {
             Location location = event.getClickedBlock().getLocation();
 
             if (isLegendaryChest(location)) {
-                event.setCancelled(true); // Отменяем разрушение сундука
-
+                event.setCancelled(true);
                 Player player = event.getPlayer();
                 if (hasChestKey(player)) {
-                    removeChestKey(player); // Убираем 1 ключ
-                    giveRandomReward(player); // Выдаем случайную награду
+                    removeChestKey(player);
+                    giveRandomReward(player);
                 } else {
                     player.sendMessage("§cУ вас нет ключа для открытия этого сундука!");
                 }
@@ -123,15 +101,13 @@ public class LegendaryChestManager implements Listener {
         }
     }
 
-    // Обработка кликов в GUI сундука
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getView().getTitle().equals("§6Легендарный сундук")) { // Проверяем, что это GUI сундука
-            event.setCancelled(true); // Отменяем возможность забирать или перемещать предметы
+        if (event.getView().getTitle().equals("§6Легендарный сундук")) {
+            event.setCancelled(true);
         }
     }
 
-    // Метод для проверки наличия ключа у игрока
     private boolean hasChestKey(Player player) {
         for (ItemStack item : player.getInventory().getContents()) {
             if (item != null && item.getType() == Material.TRIPWIRE_HOOK && item.hasItemMeta() && item.getItemMeta().getDisplayName().equals("§aКлюч от сундука")) {
@@ -141,13 +117,13 @@ public class LegendaryChestManager implements Listener {
         return false;
     }
 
-    // Метод для удаления ключа у игрока
     private void removeChestKey(Player player) {
         for (ItemStack item : player.getInventory().getContents()) {
             if (item != null && item.getType() == Material.TRIPWIRE_HOOK && item.hasItemMeta() && item.getItemMeta().getDisplayName().equals("§aКлюч от сундука")) {
-                item.setAmount(item.getAmount() - 1); // Убираем 1 ключ
+                item.setAmount(item.getAmount() - 1);
                 break;
             }
         }
     }
 }
+

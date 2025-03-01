@@ -17,7 +17,7 @@ public class CreateLegendaryChestCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (sender instanceof Player) {
             Player player = (Player) sender;
-            legendaryChestManager.createLegendaryChest(player.getLocation()); // Создаем сундук на месте игрока
+            legendaryChestManager.createLegendaryChest(player.getLocation());
             player.sendMessage("§aЛегендарный сундук создан!");
             return true;
         }
