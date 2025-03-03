@@ -17,3 +17,7 @@ commands:
     description: Создание лег сундука где стоит игрок
   balance:
     description: Показывает текущий баланс игрока.
+  setbalance:
+    description: Устанавливает игроку баланс
+  settokens:
+    description: Устанавливает игроку токены

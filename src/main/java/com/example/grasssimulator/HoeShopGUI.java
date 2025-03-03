@@ -22,10 +22,10 @@ import java.util.UUID;
 public class HoeShopGUI implements CommandExecutor, Listener {
 
     private HoeManager hoeManager;
-    private JavaPlugin plugin;
+    private Main plugin;
     private PlayerScoreboardManager scoreboardManager;
 
-    public HoeShopGUI(JavaPlugin plugin, HoeManager hoeManager, PlayerScoreboardManager scoreboardManager) {
+    public HoeShopGUI(Main plugin, HoeManager hoeManager, PlayerScoreboardManager scoreboardManager) {
         this.plugin = plugin;
         this.hoeManager = hoeManager;
         this.scoreboardManager = scoreboardManager;
@@ -100,6 +100,7 @@ public class HoeShopGUI implements CommandExecutor, Listener {
                 if (clickedItem != null && clickedItem.getType().toString().endsWith("_HOE")) {
                     UUID playerId = player.getUniqueId();
                     int hoeLevel = hoeManager.getHoeLevel(playerId);
+                    BigDecimal tokens = plugin.getTokens(playerId); // Получаем текущие токены
 
                     switch (event.getSlot()) {
                         case 2: // Мотыга-Бустер
@@ -109,6 +110,8 @@ public class HoeShopGUI implements CommandExecutor, Listener {
                             } else {
                                 if (hoeManager.buyHoe(player, "Бустер", new BigDecimal("14999"))) {
                                     player.sendMessage("§aВы успешно купили мотыгу-бустер!");
+                                    // Сохраняем данные игрока в базе данных
+                                    plugin.savePlayerData(player);
                                     hoeManager.addPurchasedHoe(player, "Бустер");
                                     scoreboardManager.updateScoreboard(player);
                                     openShop(player);
@@ -124,6 +127,7 @@ public class HoeShopGUI implements CommandExecutor, Listener {
                             } else {
                                 if (hoeManager.buyHoe(player, "Легенда", new BigDecimal("150000"))) {
                                     player.sendMessage("§aВы успешно купили мотыгу-легенду!");
+                                    plugin.savePlayerData(player);
                                     hoeManager.addPurchasedHoe(player, "Легенда");
                                     scoreboardManager.updateScoreboard(player);
                                     openShop(player);

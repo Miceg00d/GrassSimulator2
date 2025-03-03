@@ -68,7 +68,11 @@ public class RebirthGUI implements Listener {
                 BigDecimal playerBalance = plugin.getCustomEconomy().getBalance(playerId);
 
                 if (playerBalance.compareTo(cost) >= 0) {
+
                     plugin.getCustomEconomy().withdraw(playerId, cost);
+
+                    plugin.getCustomEconomy().setBalance(playerId, BigDecimal.ZERO);
+
                     rebirthLevels.put(playerId, rebirthLevel + 1);
 
                     BigDecimal tokensEarned = new BigDecimal("100").add(new BigDecimal(rebirthLevel * 75));

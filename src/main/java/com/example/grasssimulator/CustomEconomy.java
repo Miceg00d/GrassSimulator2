@@ -1,15 +1,21 @@
 package com.example.grasssimulator;
 
+import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.UUID;
 
 public class CustomEconomy {
-
+    private Main plugin;
     private HashMap<UUID, BigDecimal> balances = new HashMap<>();
     private static final BigDecimal MAX_BALANCE = new BigDecimal("999.9e96"); // 999.9az
+
+    public CustomEconomy(Main plugin) {
+        this.plugin = plugin;
+    }
 
     public static BigDecimal getMaxBalance() {
         return MAX_BALANCE;
@@ -35,6 +41,11 @@ public class CustomEconomy {
         }
 
         setBalance(playerId, newBalance);
+        // Сохраняем данные в базе данных
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null) {
+            plugin.savePlayerData(player);
+        }
     }
 
     public void withdraw(UUID playerId, BigDecimal amount) {

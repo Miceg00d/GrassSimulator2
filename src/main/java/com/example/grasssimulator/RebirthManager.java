@@ -1,5 +1,6 @@
 package com.example.grasssimulator;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -35,6 +36,18 @@ public class RebirthManager implements CommandExecutor {
             return true;
         }
         return false;
+    }
+    // Метод для получения уровня ребитха игрока
+    public int getRebirthLevel(UUID playerId) {
+        return rebirthLevels.getOrDefault(playerId, 0);
+    }
+    public void setRebirthLevel(UUID playerId, int rebirths) {
+        rebirthLevels.put(playerId, rebirths);
+// Сохраняем данные в базе данных
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null) {
+            plugin.savePlayerData(player);
+        }
     }
 }
 

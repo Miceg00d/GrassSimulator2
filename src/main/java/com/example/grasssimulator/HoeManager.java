@@ -1,5 +1,6 @@
 package com.example.grasssimulator;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -54,13 +55,22 @@ public class HoeManager {
 
     public void setHoeLevel(UUID playerId, int level) {
         hoeLevels.put(playerId, level);
+
+        // Сохраняем данные в базе данных
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null) {
+            plugin.savePlayerData(player);
+        }
     }
+
 
     public void giveHoe(Player player, String hoeType, int hoeLevel) {
         ItemStack hoe = createHoe(hoeType, hoeLevel);
         player.getInventory().setItem(0, hoe);
         activeHoes.put(player.getUniqueId(), hoeType);
         player.sendMessage("§aТеперь вы используете мотыгу: " + hoeType);
+        // Сохраняем данные в базе данных
+        plugin.savePlayerData(player);
     }
 
     private ItemStack createHoe(String hoeType, int hoeLevel) {

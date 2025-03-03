@@ -99,7 +99,7 @@ public class HoeUpgradeGUI implements CommandExecutor, Listener {
                 if (playerBalance.compareTo(cost) >= 0) {
                     plugin.getCustomEconomy().withdraw(playerId, cost);
                     hoeLevels.put(playerId, hoeLevel + 1);
-                    hoeManager.giveHoe(player, hoeManager.getActiveHoe(playerId), hoeLevel + 1);
+                    plugin.getHoeManager().setHoeLevel(playerId, hoeLevel + 1); // Сохраняем новый уровень
                     player.sendMessage("§aВаша мотыга улучшена до уровня " + (hoeLevel + 1) + "!");
                     openUpgradeMenu(player);
                     scoreboardManager.updateScoreboard(player);
