@@ -1,5 +1,6 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.commands;
 
+import com.example.grasssimulator.managers.LegendaryChestManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.command.Command;

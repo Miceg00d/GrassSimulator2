@@ -1,5 +1,8 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.gui;
 
+import com.example.grasssimulator.managers.HoeManager;
+import com.example.grasssimulator.Main;
+import com.example.grasssimulator.managers.PlayerScoreboardManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -13,7 +16,6 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -109,7 +111,10 @@ public class HoeShopGUI implements CommandExecutor, Listener {
                     switch (event.getSlot()) {
                         case 2: // Мотыга-Бустер
                             if (hoeManager.hasHoe(player, "Бустер")) {
-                                hoeManager.giveHoe(player, "Бустер", hoeLevel);
+                                hoeLevel = plugin.getHoeManager().getHoeLevel(playerId); // Гарантированно берём актуальный уровень
+                                plugin.getHoeManager().giveHoe(player, "Бустер", hoeLevel);
+                                plugin.getHoeManager().setActiveHoe(playerId, "Бустер"); // Устанавливаем активную мотыгу
+                                plugin.savePlayerData(player); // Сохраняем изменения
                                 player.sendMessage("§aВы выбрали мотыгу-бустер!");
                             } else {
                                 if (hoeManager.buyHoe(player, "Бустер", new BigDecimal("14999"))) {
@@ -126,8 +131,10 @@ public class HoeShopGUI implements CommandExecutor, Listener {
                             }
                             break;
                         case 6: // Мотыга-Легенда
-                            if (hoeManager.hasHoe(player, "Легенда")) {
-                                hoeManager.giveHoe(player, "Легенда", hoeLevel);
+                            if (hoeManager.hasHoe(player, "Легенда")) {hoeLevel = plugin.getHoeManager().getHoeLevel(playerId); // Гарантированно берём актуальный уровень
+                                plugin.getHoeManager().giveHoe(player, "Легенда", hoeLevel);
+                                plugin.getHoeManager().setActiveHoe(playerId, "Легенда"); // Устанавливаем активную мотыгу
+                                plugin.savePlayerData(player); // Сохраняем изменения
                                 player.sendMessage("§aВы выбрали мотыгу-легенду!");
                             } else {
                                 if (hoeManager.buyHoe(player, "Легенда", new BigDecimal("150000"))) {

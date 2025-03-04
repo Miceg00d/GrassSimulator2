@@ -1,5 +1,7 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.gui;
 
+import com.example.grasssimulator.Main;
+import com.example.grasssimulator.managers.PlayerScoreboardManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -11,7 +13,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.UUID;
 
@@ -73,13 +74,12 @@ public class RebirthGUI implements Listener {
 
                     plugin.getCustomEconomy().setBalance(playerId, BigDecimal.ZERO);
 
-                    rebirthLevels.put(playerId, rebirthLevel + 1);
+                    plugin.getRebirthManager().setRebirthLevel(playerId, rebirthLevel + 1);
 
                     BigDecimal tokensEarned = new BigDecimal("100").add(new BigDecimal(rebirthLevel * 75));
                     tokens.put(playerId, tokens.getOrDefault(playerId, BigDecimal.ZERO).add(tokensEarned));
                     plugin.setTokens(playerId, tokens.get(playerId)); // Используем новый метод
 
-                    hoeLevels.put(playerId, 1);
 
                     player.sendMessage("§aВы совершили ребитх! Теперь у вас " + (rebirthLevel + 1) + " ребитхов.");
                     player.closeInventory();

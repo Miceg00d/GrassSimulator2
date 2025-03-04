@@ -1,5 +1,8 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.gui;
 
+import com.example.grasssimulator.managers.HoeManager;
+import com.example.grasssimulator.Main;
+import com.example.grasssimulator.managers.PlayerScoreboardManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -47,7 +50,7 @@ public class HoeUpgradeGUI implements CommandExecutor, Listener {
         Inventory gui = Bukkit.createInventory(player, 27, "§6Улучшение мотыги");
 
         UUID playerId = player.getUniqueId();
-        int hoeLevel = hoeLevels.getOrDefault(playerId, 1);
+        int hoeLevel = plugin.getHoeManager().getHoeLevel(playerId); // Берём актуальный уровень
         int rebirthLevel = plugin.getRebirthLevel(playerId);
 
         BigDecimal cost = new BigDecimal("100").multiply(new BigDecimal("3").pow(hoeLevel - 1));
@@ -84,7 +87,7 @@ public class HoeUpgradeGUI implements CommandExecutor, Listener {
 
             Player player = (Player) event.getWhoClicked();
             UUID playerId = player.getUniqueId();
-            int hoeLevel = hoeLevels.getOrDefault(playerId, 1);
+            int hoeLevel = plugin.getHoeManager().getHoeLevel(playerId);
 
             if (hoeLevel >= 200) {
                 player.sendMessage("§cВы достигли максимального уровня мотыги!");
@@ -100,10 +103,12 @@ public class HoeUpgradeGUI implements CommandExecutor, Listener {
                     plugin.getCustomEconomy().withdraw(playerId, cost);
                     hoeLevels.put(playerId, hoeLevel + 1);
                     plugin.getHoeManager().setHoeLevel(playerId, hoeLevel + 1); // Сохраняем новый уровень
+                    plugin.savePlayerData(player); // ✅ Гарантированно сохраняем уровень
 
                     // Выдаём новую мотыгу с обновлённым уровнем!
                     String activeHoe = plugin.getHoeManager().getActiveHoe(playerId);
                     plugin.getHoeManager().giveHoe(player, activeHoe, hoeLevel + 1);
+                    plugin.savePlayerData(player); // ✅ Гарантированно сохраняем уровень
 
 
                     player.sendMessage("§aВаша мотыга улучшена до уровня " + (hoeLevel + 1) + "!");

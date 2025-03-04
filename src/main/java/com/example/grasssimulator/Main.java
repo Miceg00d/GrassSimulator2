@@ -1,5 +1,15 @@
 package com.example.grasssimulator;
 
+import com.example.grasssimulator.commands.AdminCommands;
+import com.example.grasssimulator.commands.BalanceCommand;
+import com.example.grasssimulator.commands.CreateLegendaryChestCommand;
+import com.example.grasssimulator.database.DatabaseManager;
+import com.example.grasssimulator.gui.HoeShopGUI;
+import com.example.grasssimulator.gui.HoeUpgradeGUI;
+import com.example.grasssimulator.listeners.HoeListener;
+import com.example.grasssimulator.managers.*;
+import com.example.grasssimulator.stats.PlayerStats;
+import com.example.grasssimulator.stats.TopPlayersDisplay;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -70,7 +80,7 @@ public class Main extends JavaPlugin implements Listener {
         Location chestLocation = new Location(Bukkit.getWorld("world"), 112, 103, -117); // Координаты сундука
         legendaryChestManager.createLegendaryChest(chestLocation, null); // Передаем null, так как игрок не требуется
 
-        Location displayLocation = new Location(Bukkit.getWorld("world"), 123, 108, -128);
+        Location displayLocation = new Location(Bukkit.getWorld("world"), 125, 106, -132);
         topPlayersDisplay = new TopPlayersDisplay(databaseManager, displayLocation, this);
 
         // Регистрация событий
@@ -156,7 +166,7 @@ public class Main extends JavaPlugin implements Listener {
         int rebirths = getRebirthLevel(playerId);
         BigDecimal balance = getCustomEconomy().getBalance(playerId);
         BigDecimal tokens = getTokens(playerId);
-        int hoeLevel = getHoeLevel(playerId); // Получаем уровень мотыги
+        int hoeLevel = getHoeLevel(playerId); // Загружаем актуальный уровень перед сохранением
         String activeHoe = hoeManager.getActiveHoe(playerId); // Получаем активную мотыгу
 
         // Обновляем данные игрока в базе данных
@@ -334,6 +344,11 @@ public class Main extends JavaPlugin implements Listener {
     public HashMap<UUID, Integer> getHoeLevels() {
         return hoeLevels;
     }
-
+    public DatabaseManager getDatabaseManager() {
+        return databaseManager;
+    }
+    public RebirthManager getRebirthManager() {
+        return rebirthManager;
+    }
 
 }

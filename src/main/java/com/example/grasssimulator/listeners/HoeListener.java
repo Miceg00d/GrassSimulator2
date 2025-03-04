@@ -1,5 +1,6 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.listeners;
 
+import com.example.grasssimulator.managers.HoeManager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;

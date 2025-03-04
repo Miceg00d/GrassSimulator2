@@ -1,4 +1,4 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.managers;
 
 import org.bukkit.World;
 import org.bukkit.entity.Player;

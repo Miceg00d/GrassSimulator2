@@ -1,5 +1,7 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.database;
 
+import com.example.grasssimulator.Main;
+import com.example.grasssimulator.stats.PlayerStats;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -185,5 +187,27 @@ public class DatabaseManager {
             e.printStackTrace();
         }
     }
+    public int getHoeLevel(UUID playerId) {
+        String query = "SELECT hoe_level FROM player_data WHERE uuid = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setString(1, playerId.toString());
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("hoe_level");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 1; // Если уровень не найден, ставим 1
+    }
+    public void updateHoeLevel(UUID playerId, int newLevel) {
+        String query = "UPDATE player_data SET hoe_level = ? WHERE uuid = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, newLevel); // ✅ Сохраняем правильный уровень
+            stmt.setString(2, playerId.toString());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 }
-

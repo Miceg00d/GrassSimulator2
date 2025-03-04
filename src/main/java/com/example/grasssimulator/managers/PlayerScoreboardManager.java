@@ -1,5 +1,6 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.managers;
 
+import com.example.grasssimulator.Main;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;

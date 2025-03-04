@@ -1,5 +1,9 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.commands;
 
+import com.example.grasssimulator.CustomEconomy;
+import com.example.grasssimulator.managers.HoeManager;
+import com.example.grasssimulator.Main;
+import com.example.grasssimulator.managers.PlayerScoreboardManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;

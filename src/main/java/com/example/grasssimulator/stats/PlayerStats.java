@@ -1,4 +1,4 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.stats;
 
 import java.math.BigDecimal;
 import java.util.Set;

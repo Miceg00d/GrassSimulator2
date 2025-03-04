@@ -1,5 +1,7 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.stats;
 
+import com.example.grasssimulator.database.DatabaseManager;
+import com.example.grasssimulator.Main;
 import org.bukkit.Location;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -38,7 +40,7 @@ public class TopPlayersDisplay {
         textDisplay.setText("§6Загрузка топа...");
         textDisplay.setAlignment(TextDisplay.TextAlignment.CENTER);
         textDisplay.setBackgroundColor(org.bukkit.Color.fromARGB(100, 0, 0, 0)); // Полупрозрачный фон
-        textDisplay.setSeeThrough(true); // Видно через блоки
+        textDisplay.setSeeThrough(false); // Видно через блоки
         textDisplay.setShadowed(true); // Тень текста
         textDisplay.setLineWidth(200); // Ширина текста
 

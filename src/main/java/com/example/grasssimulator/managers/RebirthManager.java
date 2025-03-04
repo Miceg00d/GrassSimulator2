@@ -1,5 +1,7 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.managers;
 
+import com.example.grasssimulator.Main;
+import com.example.grasssimulator.gui.RebirthGUI;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -43,10 +45,23 @@ public class RebirthManager implements CommandExecutor {
     }
     public void setRebirthLevel(UUID playerId, int rebirths) {
         rebirthLevels.put(playerId, rebirths);
+
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
-            plugin.savePlayerData(player); // Гарантированное сохранение в БД
+            String lastActiveHoe = plugin.getHoeManager().getActiveHoe(playerId);
+            int currentHoeLevel = plugin.getHoeManager().getHoeLevel(playerId); // Загружаем уровень мотыги
+
+            plugin.getHoeManager().giveHoe(player, lastActiveHoe, currentHoeLevel);
+            plugin.getHoeManager().setActiveHoe(playerId, lastActiveHoe);
+
+            // ✅ Гарантированно сохраняем уровень мотыги в базе (чтобы не обнулялся!)
+            plugin.getHoeManager().setHoeLevel(playerId, currentHoeLevel);
+            plugin.savePlayerData(player);
+
+            player.sendMessage("§aРебитх выполнен! Ваш уровень мотыги сохранён: " + currentHoeLevel);
         }
     }
+
+
 }
 

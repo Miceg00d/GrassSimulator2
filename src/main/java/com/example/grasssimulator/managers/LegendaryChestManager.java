@@ -1,5 +1,7 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.managers;
 
+import com.example.grasssimulator.CustomEconomy;
+import com.example.grasssimulator.Main;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -17,7 +19,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Transformation;
-import org.bukkit.util.Vector;
 import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 

@@ -1,5 +1,6 @@
-package com.example.grasssimulator;
+package com.example.grasssimulator.managers;
 
+import com.example.grasssimulator.Main;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -46,18 +47,16 @@ public class HoeManager {
 
     public void setHoeLevel(UUID playerId, int level) {
         hoeLevels.put(playerId, level);
-        Player player = Bukkit.getPlayer(playerId);
-        if (player != null) {
-            plugin.savePlayerData(player);
-        }
+        plugin.getDatabaseManager().updateHoeLevel(playerId, level); // ✅ Сохраняем правильный уровень
     }
+
 
 
     public void giveHoe(Player player, String hoeType, int hoeLevel) {
         UUID playerId = player.getUniqueId();
 
         // Загружаем правильный уровень перед выдачей
-        int correctHoeLevel = plugin.getHoeLevel(playerId);
+        int correctHoeLevel = hoeLevels.getOrDefault(playerId, 1); // Используем актуальный уровень из памяти
 
         ItemStack hoe = new ItemStack(Material.DIAMOND_HOE);
         ItemMeta meta = hoe.getItemMeta();
@@ -65,7 +64,7 @@ public class HoeManager {
         meta.setDisplayName("§a" + hoeType + " мотыга");
 
         List<String> lore = new ArrayList<>();
-        lore.add("§7Уровень: §e" + correctHoeLevel); // Теперь отображает правильный уровень!
+        lore.add("§7Уровень: §e" + hoeLevel); // ✅ Показываем правильный уровень
         meta.setLore(lore);
 
         hoe.setItemMeta(meta);
