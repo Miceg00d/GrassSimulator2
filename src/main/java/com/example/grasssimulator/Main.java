@@ -32,11 +32,9 @@ public class Main extends JavaPlugin implements Listener {
     private HashMap<Block, UUID> brokenBlocks = new HashMap<>();
     private CustomEconomy customEconomy;
     private PlayerScoreboardManager scoreboardManager;
-    private WeatherManager weatherManager;
-    private MobSpawnManager mobSpawnManager;
+    private GameRulesManager gameRulesManager;
     private CustomHoeManager customHoeManager;
     private RebirthManager rebirthManager;
-    private HungerManager hungerManager;
     private HoeManager hoeManager;
     private HoeShopGUI hoeShopGUI;
     private LegendaryChestManager legendaryChestManager;
@@ -59,15 +57,12 @@ public class Main extends JavaPlugin implements Listener {
         databaseManager.loadAllPlayersData();
         // Инициализация менеджеров
         scoreboardManager = new PlayerScoreboardManager(this);
-        weatherManager = new WeatherManager(this);
-        mobSpawnManager = new MobSpawnManager(this);
         customHoeManager = new CustomHoeManager(this);
         hoeManager = new HoeManager(this, new HashMap<>());
         rebirthManager = new RebirthManager(this, rebirthLevels, tokens, hoeLevels, scoreboardManager);
-        hungerManager = new HungerManager(this);
         hoeShopGUI = new HoeShopGUI(this, hoeManager, scoreboardManager);
         legendaryChestManager = new LegendaryChestManager(this);
-
+        gameRulesManager = new GameRulesManager(this);
         // Удаляем все старые TextDisplay в мире при запуске плагина
         legendaryChestManager.removeAllTextDisplaysInWorld();
 

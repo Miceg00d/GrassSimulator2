@@ -92,7 +92,7 @@ public class AdminCommands implements CommandExecutor {
             sender.sendMessage("§cНекорректная сумма!");
             return true;
         }
-        
+
     }
 
     private boolean handleTokensCommand(Player sender, String[] args) {
