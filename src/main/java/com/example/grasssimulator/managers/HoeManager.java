@@ -70,7 +70,6 @@ public class HoeManager {
         hoe.setItemMeta(meta);
         player.getInventory().setItem(0, hoe); // Кладём мотыгу в 1-й слот
 
-        plugin.getLogger().info("[HoeManager] Выдана мотыга " + hoeType + " уровня " + correctHoeLevel + " для " + player.getName());
     }
 
     private ItemStack createHoe(String hoeType, int hoeLevel) {

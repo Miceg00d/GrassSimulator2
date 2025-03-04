@@ -171,7 +171,6 @@ public class Main extends JavaPlugin implements Listener {
 
         // Обновляем данные игрока в базе данных
         databaseManager.updatePlayerStats(playerId, username, rebirths, balance, tokens, hoeLevel, activeHoe, hoeManager.getPurchasedHoes(playerId));
-        getLogger().info("[DB] Сохранены данные для " + username + ": Активная мотыга - " + activeHoe);
     }
 
     @EventHandler
@@ -238,8 +237,8 @@ public class Main extends JavaPlugin implements Listener {
                 scoreboardManager.updateScoreboard(player);
 
                 // Шанс 0.01% на выпадение ключа
-                if (random.nextDouble() < 0.1) {
-                    ItemStack key = new ItemStack(Material.TRIPWIRE_HOOK);
+                if (random.nextDouble() < 0.7) { // 0,001 = 0,1% (а не 0,1, что = 10%)
+                    ItemStack key = new ItemStack(Material.TRIPWIRE_HOOK, 4);
                     ItemMeta meta = key.getItemMeta();
                     meta.setDisplayName("§aКлюч от сундука");
                     key.setItemMeta(meta);
@@ -273,7 +272,6 @@ public class Main extends JavaPlugin implements Listener {
         int hoeLevel = getHoeLevel(player.getUniqueId());
 
         hoeManager.giveHoe(player, activeHoe, hoeLevel);
-        getLogger().info("[DB] Выдана мотыга " + activeHoe + " уровня " + hoeLevel + " для " + player.getName());
     }
     public static String formatNumber(BigDecimal number) {
         String[] suffixes = {"", "K", "M", "B", "T", "Qa", "Qi", "aa", "ab", "ac", "ad", "ae", "af", "ag", "ah", "ai", "aj", "ak", "al", "am", "an", "ao", "ap", "aq", "ar", "as", "at", "au", "av", "aw", "ax", "ay", "az"};
@@ -309,7 +307,6 @@ public class Main extends JavaPlugin implements Listener {
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             savePlayerData(player);
-            getLogger().info("[DB] Уровень мотыги обновлён для " + player.getName() + ": " + level);
         }
     }
 
