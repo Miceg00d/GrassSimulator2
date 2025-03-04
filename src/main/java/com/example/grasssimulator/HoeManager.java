@@ -9,24 +9,19 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class HoeManager {
 
-    private HashMap<UUID, List<String>> purchasedHoes;
-    private HashMap<UUID, String> activeHoes;
+    private final Map<UUID, Set<String>> purchasedHoes = new HashMap<>();
     private HashMap<UUID, BigDecimal> playerTokens;
     private HashMap<UUID, Integer> hoeLevels;
     private Main plugin;
+    private final Map<UUID, String> activeHoes = new HashMap<>();
 
     public HoeManager(Main plugin, HashMap<UUID, Integer> hoeLevels) {
         this.plugin = plugin;
         this.hoeLevels = hoeLevels;
-        this.purchasedHoes = new HashMap<>();
-        this.activeHoes = new HashMap<>();
         this.playerTokens = new HashMap<>();
     }
 
@@ -37,17 +32,13 @@ public class HoeManager {
 
     public void addPurchasedHoe(Player player, String hoeType) {
         UUID playerId = player.getUniqueId();
-        purchasedHoes.computeIfAbsent(playerId, k -> new ArrayList<>()).add(hoeType);
+        purchasedHoes.computeIfAbsent(playerId, k -> new HashSet<>()).add(hoeType); // Теперь Set<String>
     }
 
-    public List<String> getPurchasedHoes(Player player) {
-        UUID playerId = player.getUniqueId();
-        return purchasedHoes.getOrDefault(playerId, new ArrayList<>());
+    public Set<String> getPurchasedHoes(UUID playerId) {
+        return purchasedHoes.getOrDefault(playerId, new HashSet<>());
     }
 
-    public String getActiveHoe(UUID playerId) {
-        return activeHoes.getOrDefault(playerId, "Обычная");
-    }
 
     public int getHoeLevel(UUID playerId) {
         return hoeLevels.getOrDefault(playerId, 1);
@@ -55,8 +46,6 @@ public class HoeManager {
 
     public void setHoeLevel(UUID playerId, int level) {
         hoeLevels.put(playerId, level);
-
-        // Сохраняем данные в базе данных
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             plugin.savePlayerData(player);
@@ -65,12 +54,24 @@ public class HoeManager {
 
 
     public void giveHoe(Player player, String hoeType, int hoeLevel) {
-        ItemStack hoe = createHoe(hoeType, hoeLevel);
-        player.getInventory().setItem(0, hoe);
-        activeHoes.put(player.getUniqueId(), hoeType);
-        player.sendMessage("§aТеперь вы используете мотыгу: " + hoeType);
-        // Сохраняем данные в базе данных
-        plugin.savePlayerData(player);
+        UUID playerId = player.getUniqueId();
+
+        // Загружаем правильный уровень перед выдачей
+        int correctHoeLevel = plugin.getHoeLevel(playerId);
+
+        ItemStack hoe = new ItemStack(Material.DIAMOND_HOE);
+        ItemMeta meta = hoe.getItemMeta();
+
+        meta.setDisplayName("§a" + hoeType + " мотыга");
+
+        List<String> lore = new ArrayList<>();
+        lore.add("§7Уровень: §e" + correctHoeLevel); // Теперь отображает правильный уровень!
+        meta.setLore(lore);
+
+        hoe.setItemMeta(meta);
+        player.getInventory().setItem(0, hoe); // Кладём мотыгу в 1-й слот
+
+        plugin.getLogger().info("[HoeManager] Выдана мотыга " + hoeType + " уровня " + correctHoeLevel + " для " + player.getName());
     }
 
     private ItemStack createHoe(String hoeType, int hoeLevel) {
@@ -90,7 +91,7 @@ public class HoeManager {
         }
 
         List<String> lore = new ArrayList<>();
-        lore.add("§c§lУровень: " + hoeLevel);
+        lore.add("§c§lУровень: " + hoeLevel); // Загружаем уровень из базы!
         meta.setLore(lore);
 
         hoe.setItemMeta(meta);
@@ -113,17 +114,22 @@ public class HoeManager {
 
     public boolean buyHoe(Player player, String hoeType, BigDecimal cost) {
         UUID playerId = player.getUniqueId();
-        BigDecimal tokens = playerTokens.getOrDefault(playerId, BigDecimal.ZERO);
+        BigDecimal tokens = plugin.getTokens(playerId); // Используем актуальные данные из плагина
 
         if (tokens.compareTo(cost) >= 0) {
-            playerTokens.put(playerId, tokens.subtract(cost));
-            plugin.setTokens(playerId, tokens.subtract(cost));
+            BigDecimal newTokens = tokens.subtract(cost);
+            plugin.setTokens(playerId, newTokens); // Сразу сохраняем новые токены
+            setActiveHoe(playerId, hoeType); // Сохраняем новую мотыгу
 
-            int hoeLevel = getHoeLevel(playerId);
-            giveHoe(player, hoeType, hoeLevel);
+            int hoeLevel = plugin.getHoeLevel(playerId); // Загружаем правильный уровень мотыги!
+            giveHoe(player, hoeType, hoeLevel); // Теперь выдаётся мотыга с сохранённым уровнем
+
+            plugin.savePlayerData(player); // Сохраняем покупку
+
+            player.sendMessage("§aВы успешно купили мотыгу " + hoeType + "!");
             return true;
         } else {
-            player.sendMessage("§cУ вас недостаточно токенов для покупки этой мотыги!");
+            player.sendMessage("§cУ вас недостаточно токенов для покупки!");
             return false;
         }
     }
@@ -149,5 +155,18 @@ public class HoeManager {
             }
         }
         return false;
+    }
+    public void setActiveHoe(UUID playerId, String hoeType) {
+        activeHoes.put(playerId, hoeType);
+    }
+
+    public String getActiveHoe(UUID playerId) {
+        return activeHoes.getOrDefault(playerId, "Обычная"); // Если нет данных, по умолчанию "Обычная"
+    }
+    public void loadPurchasedHoes(UUID playerId) {
+        purchasedHoes.putIfAbsent(playerId, new HashSet<>()); // Теперь создаётся HashSet<String>
+    }
+    public void setPurchasedHoes(UUID playerId, Set<String> hoes) {
+        purchasedHoes.put(playerId, hoes);
     }
 }

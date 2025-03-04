@@ -43,10 +43,9 @@ public class RebirthManager implements CommandExecutor {
     }
     public void setRebirthLevel(UUID playerId, int rebirths) {
         rebirthLevels.put(playerId, rebirths);
-// Сохраняем данные в базе данных
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
-            plugin.savePlayerData(player);
+            plugin.savePlayerData(player); // Гарантированное сохранение в БД
         }
     }
 }

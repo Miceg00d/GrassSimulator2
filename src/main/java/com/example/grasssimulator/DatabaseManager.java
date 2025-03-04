@@ -1,5 +1,6 @@
 package com.example.grasssimulator;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.math.BigDecimal;
@@ -31,10 +32,8 @@ public class DatabaseManager {
         }
     }
 
-    // Создаем таблицу, если её нет
     private void createTable() {
         try (Statement stmt = connection.createStatement()) {
-            // Создаем таблицу, если её нет
             stmt.execute("CREATE TABLE IF NOT EXISTS player_stats (" +
                     "uuid TEXT PRIMARY KEY, " +
                     "username TEXT NOT NULL, " +
@@ -42,7 +41,10 @@ public class DatabaseManager {
                     "balance DECIMAL(20, 2) DEFAULT 0, " +
                     "tokens DECIMAL(20, 2) DEFAULT 0, " +
                     "hoe_level INTEGER DEFAULT 1, " +
-                    "active_hoe TEXT DEFAULT 'Обычная')");
+                    "active_hoe TEXT DEFAULT 'Обычная', " +
+                    "purchased_hoes TEXT DEFAULT '' )"); // Добавили новый столбец
+
+            addColumnIfNotExists("purchased_hoes", "TEXT DEFAULT ''"); // Если нет, добавляем
 
             // Проверяем наличие столбцов и добавляем их, если они отсутствуют
             addColumnIfNotExists("tokens", "DECIMAL(20, 2) DEFAULT 0");
@@ -75,9 +77,9 @@ public class DatabaseManager {
         }
     }
 
-    // Обновляем данные игрока
-    public void updatePlayerStats(UUID uuid, String username, int rebirths, BigDecimal balance, BigDecimal tokens, int hoeLevel, String activeHoe) {
-        String query = "INSERT OR REPLACE INTO player_stats (uuid, username, rebirths, balance, tokens, hoe_level, active_hoe) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    public void updatePlayerStats(UUID uuid, String username, int rebirths, BigDecimal balance, BigDecimal tokens, int hoeLevel, String activeHoe, Set<String> purchasedHoes) {
+        String query = "INSERT OR REPLACE INTO player_stats (uuid, username, rebirths, balance, tokens, hoe_level, active_hoe, purchased_hoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setString(1, uuid.toString());
             stmt.setString(2, username);
@@ -86,6 +88,8 @@ public class DatabaseManager {
             stmt.setBigDecimal(5, tokens);
             stmt.setInt(6, hoeLevel);
             stmt.setString(7, activeHoe);
+            stmt.setString(8, String.join(",", purchasedHoes)); // Сохраняем купленные мотыги в строку
+
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -98,6 +102,7 @@ public class DatabaseManager {
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setString(1, uuid.toString());
             ResultSet rs = stmt.executeQuery();
+
             if (rs.next()) {
                 String username = rs.getString("username");
                 int rebirths = rs.getInt("rebirths");
@@ -105,7 +110,12 @@ public class DatabaseManager {
                 BigDecimal tokens = rs.getBigDecimal("tokens");
                 int hoeLevel = rs.getInt("hoe_level");
                 String activeHoe = rs.getString("active_hoe");
-                return new PlayerStats(username, rebirths, balance, tokens, hoeLevel, activeHoe);
+                String purchasedHoesStr = rs.getString("purchased_hoes"); // Загружаем купленные мотыги
+                Set<String> purchasedHoes = new HashSet<>(Arrays.asList(purchasedHoesStr.split(",")));
+
+                return new PlayerStats(username, rebirths, balance, tokens, hoeLevel, activeHoe, purchasedHoes);
+            } else {
+                Bukkit.getLogger().warning("[DB] Нет данных в БД для UUID: " + uuid);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -113,17 +123,21 @@ public class DatabaseManager {
         return null;
     }
 
-    // Получаем топ игроков по ребитхам и балансу
     public List<Map.Entry<String, PlayerStats>> getTopPlayers() {
         List<Map.Entry<String, PlayerStats>> topPlayers = new ArrayList<>();
-        String query = "SELECT username, rebirths, balance FROM player_stats ORDER BY rebirths DESC, balance DESC LIMIT 10";
+        String query = "SELECT username, rebirths, balance, tokens, hoe_level FROM player_stats ORDER BY rebirths DESC, balance DESC LIMIT 10";
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
             while (rs.next()) {
                 String username = rs.getString("username");
                 int rebirths = rs.getInt("rebirths");
                 BigDecimal balance = rs.getBigDecimal("balance");
-                topPlayers.add(new AbstractMap.SimpleEntry<>(username, new PlayerStats(username, rebirths, balance, BigDecimal.ZERO, 1, "Обычная")));
+                BigDecimal tokens = rs.getBigDecimal("tokens");
+                int hoeLevel = rs.getInt("hoe_level");
+
+                // Создаём объект PlayerStats и добавляем в список
+                PlayerStats stats = new PlayerStats(username, rebirths, balance, tokens, hoeLevel, "Обычная", new HashSet<>());
+                topPlayers.add(new AbstractMap.SimpleEntry<>(username, stats));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -141,4 +155,35 @@ public class DatabaseManager {
             e.printStackTrace();
         }
     }
+
+    public void loadAllPlayersData() {
+        String query = "SELECT * FROM player_stats";
+        try (PreparedStatement stmt = connection.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                UUID uuid = UUID.fromString(rs.getString("uuid"));
+                String username = rs.getString("username");
+                int rebirths = rs.getInt("rebirths");
+                BigDecimal balance = rs.getBigDecimal("balance");
+                BigDecimal tokens = rs.getBigDecimal("tokens");
+                int hoeLevel = rs.getInt("hoe_level");
+                String activeHoe = rs.getString("active_hoe");
+
+                Bukkit.getLogger().info("[DB] Загружены данные из БД для игрока: " + username +
+                        " | Баланс: " + balance +
+                        " | Токены: " + tokens +
+                        " | Ребитхи: " + rebirths +
+                        " | Уровень мотыги: " + hoeLevel);
+
+                Main.getInstance().getRebirthLevels().put(uuid, rebirths);
+                Main.getInstance().getTokens().put(uuid, tokens);
+                Main.getInstance().getHoeLevels().put(uuid, hoeLevel);
+                Main.getInstance().getCustomEconomy().setBalance(uuid, balance);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 }
+

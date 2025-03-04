@@ -43,6 +43,8 @@ public class HoeShopGUI implements CommandExecutor, Listener {
     }
 
     public void openShop(Player player) {
+        plugin.loadPlayerData(player); // Загружаем данные перед открытием магазина
+        hoeManager.loadPurchasedHoes(player.getUniqueId()); // Загружаем купленные мотыги
         Inventory gui = Bukkit.createInventory(player, 9, "§6Магазин мотыг");
 
         // Мотыга-Бустер
@@ -90,18 +92,20 @@ public class HoeShopGUI implements CommandExecutor, Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
+
         if (event.getView().getTitle().equals("§6Магазин мотыг")) {
             event.setCancelled(true);
 
             if (event.getWhoClicked() instanceof Player) {
                 Player player = (Player) event.getWhoClicked();
                 ItemStack clickedItem = event.getCurrentItem();
+                // Загружаем данные один раз перед обработкой покупки
+                plugin.loadPlayerData(player);
+                UUID playerId = player.getUniqueId();
+                int hoeLevel = hoeManager.getHoeLevel(playerId); // Загружаем уровень из базы
+                BigDecimal tokens = plugin.getTokens(playerId);
 
                 if (clickedItem != null && clickedItem.getType().toString().endsWith("_HOE")) {
-                    UUID playerId = player.getUniqueId();
-                    int hoeLevel = hoeManager.getHoeLevel(playerId);
-                    BigDecimal tokens = plugin.getTokens(playerId); // Получаем текущие токены
-
                     switch (event.getSlot()) {
                         case 2: // Мотыга-Бустер
                             if (hoeManager.hasHoe(player, "Бустер")) {
@@ -110,14 +114,15 @@ public class HoeShopGUI implements CommandExecutor, Listener {
                             } else {
                                 if (hoeManager.buyHoe(player, "Бустер", new BigDecimal("14999"))) {
                                     player.sendMessage("§aВы успешно купили мотыгу-бустер!");
-                                    // Сохраняем данные игрока в базе данных
-                                    plugin.savePlayerData(player);
                                     hoeManager.addPurchasedHoe(player, "Бустер");
+                                    plugin.savePlayerData(player); // Сохраняем данные после покупки
+
                                     scoreboardManager.updateScoreboard(player);
                                     openShop(player);
                                 } else {
                                     player.sendMessage("§cУ вас недостаточно токенов для покупки мотыги-бустер!");
                                 }
+                                plugin.loadPlayerData(player); // Обновляем данные перед открытием магазина
                             }
                             break;
                         case 6: // Мотыга-Легенда
@@ -129,6 +134,8 @@ public class HoeShopGUI implements CommandExecutor, Listener {
                                     player.sendMessage("§aВы успешно купили мотыгу-легенду!");
                                     plugin.savePlayerData(player);
                                     hoeManager.addPurchasedHoe(player, "Легенда");
+                                    plugin.savePlayerData(player); // Сохраняем данные после покупки
+
                                     scoreboardManager.updateScoreboard(player);
                                     openShop(player);
                                 } else {

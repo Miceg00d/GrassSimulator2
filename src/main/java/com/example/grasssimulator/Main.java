@@ -8,6 +8,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -15,6 +16,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Random;
 import java.util.UUID;
 
@@ -22,6 +24,7 @@ public class Main extends JavaPlugin implements Listener {
 
     private DatabaseManager databaseManager;
     private TopPlayersDisplay topPlayersDisplay;
+    private static Main instance;
 
     private HashMap<UUID, Integer> hoeLevels = new HashMap<>();
     private HashMap<UUID, Integer> rebirthLevels = new HashMap<>();
@@ -41,14 +44,19 @@ public class Main extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        instance = this; // Устанавливаем ссылку на текущий экземпляр
+
+        getLogger().info("Запуск сервера... Загружаем базу данных...");
 
         databaseManager = new DatabaseManager(this);
         customEconomy = new CustomEconomy(this);
 
-        // Загрузка данных игроков при входе
+        // Загружаем данные всех онлайн-игроков
         for (Player player : Bukkit.getOnlinePlayers()) {
             loadPlayerData(player);
         }
+        // Загружаем данные всех игроков из базы, даже если они оффлайн
+        databaseManager.loadAllPlayersData();
         // Инициализация менеджеров
         scoreboardManager = new PlayerScoreboardManager(this);
         weatherManager = new WeatherManager(this);
@@ -85,36 +93,64 @@ public class Main extends JavaPlugin implements Listener {
         getCommand("setbalance").setExecutor(new AdminCommands(this, hoeManager, scoreboardManager));
         getCommand("settokens").setExecutor(new AdminCommands(this, hoeManager, scoreboardManager));
 
-
-        getLogger().info("GrassSimulator enabled!");
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    savePlayerData(player);
+                }
+            }
+        }.runTaskTimer(this, 20 * 60 * 5, 20 * 60 * 5); // Каждые 5 минут
+        getLogger().info("Данные всех игроков загружены!");
+    }
+    public static Main getInstance() {
+        return instance;
     }
 
     @Override
     public void onDisable() {
-        // Сохранение данных игроков при выключении
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            savePlayerData(player);
-        }
-        databaseManager.close();
+        getLogger().info("Сохранение данных перед выключением сервера...");
 
-        getLogger().info("GrassSimulator disabled!");
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            savePlayerData(player); // Сохранение каждого игрока
+        }
+
+        databaseManager.close(); // Закрываем соединение с БД
+
+        getLogger().info("Все данные сохранены!");
     }
     // Загрузка данных игрока из базы данных
     public void loadPlayerData(Player player) {
         UUID playerId = player.getUniqueId();
+        getLogger().info("[DB] Загружаем данные для игрока: " + player.getName() + " (UUID: " + playerId + ")");
+
         PlayerStats stats = databaseManager.getPlayerStats(playerId);
         if (stats != null) {
+            getLogger().info("[DB] Данные загружены: " + stats.getUsername() +
+                    " | Баланс: " + stats.getBalance() +
+                    " | Токены: " + stats.getTokens() +
+                    " | Ребитхи: " + stats.getRebirths() +
+                    " | Уровень мотыги: " + stats.getHoeLevel());
+
+
             rebirthLevels.put(playerId, stats.getRebirths());
             tokens.put(playerId, stats.getTokens()); // Загружаем токены
-            hoeLevels.put(playerId, stats.getHoeLevel());
+            hoeLevels.put(playerId, stats.getHoeLevel()); // Устанавливаем загруженный уровень мотыги
             customEconomy.setBalance(playerId, stats.getBalance());
+            hoeManager.setActiveHoe(playerId, stats.getActiveHoe()); // Устанавливаем активную мотыгу
+            // Загружаем купленные мотыги из базы
+            hoeManager.setPurchasedHoes(playerId, stats.getPurchasedHoes());
         } else {
+            getLogger().warning("[DB] Данные для игрока " + player.getName() + " не найдены! Создаём новую запись...");
+
             // Если данные игрока не найдены, создаем новые
             rebirthLevels.put(playerId, 0);
             tokens.put(playerId, BigDecimal.ZERO);
             hoeLevels.put(playerId, 1);
             customEconomy.setBalance(playerId, BigDecimal.ZERO);
-            databaseManager.updatePlayerStats(playerId, player.getName(), 0, BigDecimal.ZERO, BigDecimal.ZERO, 1, "Обычная");
+            hoeManager.setActiveHoe(playerId, "Обычная");
+
+            databaseManager.updatePlayerStats(playerId, player.getName(), 0, BigDecimal.ZERO, BigDecimal.ZERO, 1, "Обычная", new HashSet<>());
         }
     }
 
@@ -126,10 +162,11 @@ public class Main extends JavaPlugin implements Listener {
         BigDecimal balance = getCustomEconomy().getBalance(playerId);
         BigDecimal tokens = getTokens(playerId);
         int hoeLevel = getHoeLevel(playerId); // Получаем уровень мотыги
-        String activeHoe = "Обычная"; // Замените на реальное значение, если у вас есть система активной мотыги
+        String activeHoe = hoeManager.getActiveHoe(playerId); // Получаем активную мотыгу
 
         // Обновляем данные игрока в базе данных
-        databaseManager.updatePlayerStats(playerId, username, rebirths, balance, tokens, hoeLevel, activeHoe);
+        databaseManager.updatePlayerStats(playerId, username, rebirths, balance, tokens, hoeLevel, activeHoe, hoeManager.getPurchasedHoes(playerId));
+        getLogger().info("[DB] Сохранены данные для " + username + ": Активная мотыга - " + activeHoe);
     }
 
     @EventHandler
@@ -225,11 +262,14 @@ public class Main extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        customHoeManager.giveCustomHoe(player);
-        hoeManager.giveHoe(player, "Обычная", 1);
-        loadPlayerData(player);
-    }
+        loadPlayerData(player); // Загружаем данные из базы
 
+        String activeHoe = hoeManager.getActiveHoe(player.getUniqueId()); // Получаем активную мотыгу
+        int hoeLevel = getHoeLevel(player.getUniqueId());
+
+        hoeManager.giveHoe(player, activeHoe, hoeLevel);
+        getLogger().info("[DB] Выдана мотыга " + activeHoe + " уровня " + hoeLevel + " для " + player.getName());
+    }
     public static String formatNumber(BigDecimal number) {
         String[] suffixes = {"", "K", "M", "B", "T", "Qa", "Qi", "aa", "ab", "ac", "ad", "ae", "af", "ag", "ah", "ai", "aj", "ak", "al", "am", "an", "ao", "ap", "aq", "ar", "as", "at", "au", "av", "aw", "ax", "ay", "az"};
         int suffixIndex = 0;
@@ -260,10 +300,11 @@ public class Main extends JavaPlugin implements Listener {
     public void setHoeLevel(UUID playerId, int level) {
         hoeLevels.put(playerId, level);
 
-        // Сохраняем данные в базе данных
+        // Гарантируем мгновенное сохранение в базу
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             savePlayerData(player);
+            getLogger().info("[DB] Уровень мотыги обновлён для " + player.getName() + ": " + level);
         }
     }
 
@@ -275,10 +316,29 @@ public class Main extends JavaPlugin implements Listener {
         return customEconomy;
     }
 
+
     public PlayerScoreboardManager getScoreboardManager() {
         return scoreboardManager;
     }
     public HoeManager getHoeManager() {
         return hoeManager;
     }
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        savePlayerData(player);
+    }
+    public HashMap<UUID, Integer> getRebirthLevels() {
+        return rebirthLevels;
+    }
+
+    public HashMap<UUID, BigDecimal> getTokens() {
+        return tokens;
+    }
+
+    public HashMap<UUID, Integer> getHoeLevels() {
+        return hoeLevels;
+    }
+
+
 }
