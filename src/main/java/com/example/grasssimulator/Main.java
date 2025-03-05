@@ -8,6 +8,7 @@ import com.example.grasssimulator.gui.HoeShopGUI;
 import com.example.grasssimulator.gui.HoeUpgradeGUI;
 import com.example.grasssimulator.listeners.HoeListener;
 import com.example.grasssimulator.managers.*;
+import com.example.grasssimulator.quests.QuestNPC;
 import com.example.grasssimulator.stats.PlayerStats;
 import com.example.grasssimulator.stats.TopPlayersDisplay;
 import org.bukkit.*;
@@ -49,6 +50,7 @@ public class Main extends JavaPlugin implements Listener {
     private HoeShopGUI hoeShopGUI;
     private LegendaryChestManager legendaryChestManager;
     private Random random = new Random();
+    private QuestNPC questNPC;
 
     @Override
     public void onEnable() {
@@ -82,6 +84,11 @@ public class Main extends JavaPlugin implements Listener {
 
         Location displayLocation = new Location(Bukkit.getWorld("world"), 125, 106, -132);
         topPlayersDisplay = new TopPlayersDisplay(databaseManager, displayLocation, this);
+        getLogger().info("[GrassSimulator] Запуск сервера... Загружаем базу данных...");
+
+        questNPC = new QuestNPC(this); // Создаём объект NPC
+
+        registerPlayerJoinListener(); // Регистрируем обработчик событий
 
         // Регистрация событий
         getServer().getPluginManager().registerEvents(this, this);
@@ -110,6 +117,21 @@ public class Main extends JavaPlugin implements Listener {
     }
     public static Main getInstance() {
         return instance;
+    }
+    private void registerPlayerJoinListener() {
+        Bukkit.getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onPlayerJoin(PlayerJoinEvent event) {
+                Bukkit.getScheduler().runTaskLater(Main.this, () -> { // Используем Main.this
+                    if (questNPC == null) {
+                        questNPC = new QuestNPC(Main.this);
+                    }
+                    Location npcLocation = new Location(Bukkit.getWorld("world"), 103, 103, -128);
+                    getLogger().info("[DEBUG] Спавним NPC после входа игрока на координатах: " + npcLocation);
+                    questNPC.spawnNPC(npcLocation);
+                }, 20L); // Задержка 1 секунда
+            }
+        }, this);
     }
 
     @Override
@@ -347,5 +369,6 @@ public class Main extends JavaPlugin implements Listener {
     public RebirthManager getRebirthManager() {
         return rebirthManager;
     }
+
 
 }
