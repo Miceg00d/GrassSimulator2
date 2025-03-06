@@ -93,6 +93,7 @@ public class Main extends JavaPlugin implements Listener {
         // Регистрация событий
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new HoeListener(hoeManager), this);
+        Bukkit.getPluginManager().registerEvents(new QuestNPC(this), this);
 
         // Регистрация команд
         getCommand("upgradehoe").setExecutor(new HoeUpgradeGUI(this, hoeLevels, scoreboardManager, hoeManager));

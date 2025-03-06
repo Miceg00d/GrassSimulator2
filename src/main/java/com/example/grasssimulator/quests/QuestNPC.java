@@ -1,14 +1,17 @@
 package com.example.grasssimulator.quests;
 
 import com.mojang.authlib.GameProfile;
-import net.minecraft.network.chat.Component;
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.protocol.game.*;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.protocol.game.ClientboundAddPlayerPacket;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
+
+import java.lang.reflect.Field;
+
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import org.bukkit.*;
-import org.bukkit.boss.BarColor;
-import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.craftbukkit.v1_20_R1.CraftServer;
 import org.bukkit.craftbukkit.v1_20_R1.CraftWorld;
@@ -17,7 +20,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -47,7 +50,7 @@ public class QuestNPC implements Listener {
             return;
         }
 
-        GameProfile profile = new GameProfile(UUID.randomUUID(), "§c§lМайнер");
+        GameProfile profile = new GameProfile(UUID.randomUUID(), "Майнер");
         npc = new ServerPlayer(
                 ((CraftServer) Bukkit.getServer()).getServer(),
                 ((CraftWorld) location.getWorld()).getHandle(),
@@ -62,7 +65,7 @@ public class QuestNPC implements Listener {
             npc = null; // Обнуляем, чтобы не пытаться работать с ним дальше
             return;
         }
-
+        npc.getBukkitEntity().setCustomName("§aКвестовый NPC"); // Важно для проверки в onNPCClick
         npc.getBukkitEntity().setCustomNameVisible(true);
 
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -70,6 +73,12 @@ public class QuestNPC implements Listener {
         }
 
         Bukkit.getLogger().info("[DEBUG] Спавним NPC на координатах: " + location);
+        Bukkit.getLogger().info("[DEBUG] NPC UUID: " + npc.getUUID());
+        Bukkit.getLogger().info("[DEBUG] NPC EntityID: " + npc.getId());
+        if (npc.getBukkitEntity() == null) {
+            Bukkit.getLogger().severe("Не удалось создать NPC!");
+            return;
+        }
     }
 
 
@@ -105,38 +114,11 @@ public class QuestNPC implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> sendNPCToPlayer(event.getPlayer()), 20L);
-    }
-
-    @EventHandler
-    public void onNPCClick(PlayerInteractAtEntityEvent event) {
         Player player = event.getPlayer();
-        UUID playerId = player.getUniqueId();
-
-        // Проверяем, что игрок кликнул по NPC (он выглядит как игрок)
-        if (!(event.getRightClicked() instanceof CraftPlayer)) return;
-
-        // Проверяем, что кликнули именно по нашему NPC
-        CraftPlayer clickedPlayer = (CraftPlayer) event.getRightClicked();
-        if (!clickedPlayer.getProfile().getName().equals("QuestNPC")) return;
-
-        event.setCancelled(true); // Отключаем стандартное взаимодействие с "игроком"
-
-        player.sendMessage("§eВы поговорили с §cКвестовым NPC§e!");
-
-        int stage = playerQuestStage.getOrDefault(playerId, 0);
-        if (stage >= questStages.length) {
-            player.sendMessage("§aВы выполнили все квесты!");
-            return;
-        }
-
-        player.sendMessage("§eВы взяли квест: сломать " + questStages[stage] + " травы!");
-        playerProgress.put(playerId, 0);
-
-        BossBar bossBar = Bukkit.createBossBar("Прогресс: 0/" + questStages[stage], BarColor.GREEN, BarStyle.SOLID);
-        bossBar.addPlayer(player);
-        playerBossBars.put(playerId, bossBar);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> sendNPCToPlayer(event.getPlayer()), 20L);
+        injectPacketListener(player); // Перехватываем клик
     }
+
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
@@ -163,4 +145,70 @@ public class QuestNPC implements Listener {
             playerBossBars.remove(playerId);
         }
     }
+    @EventHandler
+    public void onNPCClick(EntityDamageByEntityEvent event) {
+        Bukkit.getLogger().info("NPC Name: " + event.getEntity().getCustomName()); // Убедитесь, что имя установлено
+        if (!(event.getDamager() instanceof Player player)) return;
+
+        if (event.getEntity() instanceof org.bukkit.entity.Player bukkitNPC
+                && bukkitNPC.getUniqueId().equals(npc.getUUID())) {
+
+            event.setCancelled(true);
+            player.sendMessage("§eВы кликнули по квестовому NPC!");
+            handleNPCClick(player); // Вызовите метод выдачи квеста
+
+        }
+    }
+    private void injectPacketListener(Player player) {
+        ServerGamePacketListenerImpl connection = ((CraftPlayer) player).getHandle().connection;
+
+        try {
+            Field channelField = connection.getClass().getDeclaredField("channel");
+            channelField.setAccessible(true);
+            Object channel = channelField.get(connection);
+
+            if (channel instanceof io.netty.channel.Channel) {
+                ((io.netty.channel.Channel) channel).pipeline().addBefore("packet_handler", "npc_interact", new ChannelDuplexHandler() {
+                    @Override
+                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                        if (msg instanceof ServerboundInteractPacket packet) {
+                            Bukkit.getLogger().info("[DEBUG] Пакет взаимодействия получен!");
+
+                            // Получаем entityId через рефлексию
+                            int entityId = 0;
+                            try {
+                                Field entityIdField = packet.getClass().getDeclaredField("entityId");
+                                entityIdField.setAccessible(true);
+                                entityId = entityIdField.getInt(packet);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                return;
+                            }
+
+                            // Получаем цель через мир игрока
+                            ServerPlayer target = ((CraftPlayer) player).getHandle().getLevel().getEntity(entityId);
+
+                            if (target != null && target.getUUID().equals(npc.getUUID())) {
+                                Bukkit.getLogger().info("[DEBUG] Игрок кликнул по NPC!");
+                                handleNPCClick(player);
+                                return;
+                            } else {
+                                Bukkit.getLogger().warning("[DEBUG] Цель не совпадает с NPC (Target ID: " + (target != null ? target.getId() : "null") + ")");
+                            }
+                        }
+                        super.channelRead(ctx, msg);
+                    }
+                });
+            }
+        } catch (Exception e) {
+            Bukkit.getLogger().severe("[ERROR] Ошибка при обработке пакета:");
+            e.printStackTrace();
+        }
+    }
+
+    private void handleNPCClick(Player player) {
+        player.sendMessage(ChatColor.YELLOW + "Вы взяли квест у NPC!");
+        Bukkit.getLogger().info("[DEBUG] Квест выдан игроку " + player.getName());
+    }
 }
+
