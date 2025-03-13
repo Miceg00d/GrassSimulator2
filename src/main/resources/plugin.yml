@@ -2,6 +2,7 @@ name: GrassSimulator
 version: '1.0-SNAPSHOT'
 main: com.example.grasssimulator.Main
 api-version: '1.20'
+softdepend: [ProtocolLib]
 commands:
   hoeshop:
     description: Открывает магазин мотыг.

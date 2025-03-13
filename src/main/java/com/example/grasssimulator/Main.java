@@ -1,5 +1,10 @@
 package com.example.grasssimulator;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketEvent;
+
 import com.example.grasssimulator.commands.AdminCommands;
 import com.example.grasssimulator.commands.BalanceCommand;
 import com.example.grasssimulator.commands.CreateLegendaryChestCommand;
@@ -8,7 +13,6 @@ import com.example.grasssimulator.gui.HoeShopGUI;
 import com.example.grasssimulator.gui.HoeUpgradeGUI;
 import com.example.grasssimulator.listeners.HoeListener;
 import com.example.grasssimulator.managers.*;
-import com.example.grasssimulator.quests.QuestNPC;
 import com.example.grasssimulator.stats.PlayerStats;
 import com.example.grasssimulator.stats.TopPlayersDisplay;
 import org.bukkit.*;
@@ -20,6 +24,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -50,7 +55,6 @@ public class Main extends JavaPlugin implements Listener {
     private HoeShopGUI hoeShopGUI;
     private LegendaryChestManager legendaryChestManager;
     private Random random = new Random();
-    private QuestNPC questNPC;
 
     @Override
     public void onEnable() {
@@ -86,14 +90,15 @@ public class Main extends JavaPlugin implements Listener {
         topPlayersDisplay = new TopPlayersDisplay(databaseManager, displayLocation, this);
         getLogger().info("[GrassSimulator] Запуск сервера... Загружаем базу данных...");
 
-        questNPC = new QuestNPC(this); // Создаём объект NPC
 
-        registerPlayerJoinListener(); // Регистрируем обработчик событий
+
+
+
+
 
         // Регистрация событий
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new HoeListener(hoeManager), this);
-        Bukkit.getPluginManager().registerEvents(new QuestNPC(this), this);
 
         // Регистрация команд
         getCommand("upgradehoe").setExecutor(new HoeUpgradeGUI(this, hoeLevels, scoreboardManager, hoeManager));
@@ -119,21 +124,8 @@ public class Main extends JavaPlugin implements Listener {
     public static Main getInstance() {
         return instance;
     }
-    private void registerPlayerJoinListener() {
-        Bukkit.getPluginManager().registerEvents(new Listener() {
-            @EventHandler
-            public void onPlayerJoin(PlayerJoinEvent event) {
-                Bukkit.getScheduler().runTaskLater(Main.this, () -> { // Используем Main.this
-                    if (questNPC == null) {
-                        questNPC = new QuestNPC(Main.this);
-                    }
-                    Location npcLocation = new Location(Bukkit.getWorld("world"), 103, 103, -128);
-                    getLogger().info("[DEBUG] Спавним NPC после входа игрока на координатах: " + npcLocation);
-                    questNPC.spawnNPC(npcLocation);
-                }, 20L); // Задержка 1 секунда
-            }
-        }, this);
-    }
+    @EventHandler
+
 
     @Override
     public void onDisable() {
