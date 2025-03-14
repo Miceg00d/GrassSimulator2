@@ -44,7 +44,9 @@ public class DatabaseManager {
                     "tokens DECIMAL(20, 2) DEFAULT 0, " +
                     "hoe_level INTEGER DEFAULT 1, " +
                     "active_hoe TEXT DEFAULT 'Обычная', " +
-                    "purchased_hoes TEXT DEFAULT '' )"); // Добавили новый столбец
+                    "purchased_hoes TEXT DEFAULT)");
+
+
 
             addColumnIfNotExists("purchased_hoes", "TEXT DEFAULT ''"); // Если нет, добавляем
 
@@ -56,6 +58,7 @@ public class DatabaseManager {
             e.printStackTrace();
         }
     }
+
 
     // Метод для добавления столбца, если он отсутствует
     private void addColumnIfNotExists(String columnName, String columnDefinition) {
@@ -80,8 +83,7 @@ public class DatabaseManager {
     }
 
     public void updatePlayerStats(UUID uuid, String username, int rebirths, BigDecimal balance, BigDecimal tokens, int hoeLevel, String activeHoe, Set<String> purchasedHoes) {
-        String query = "INSERT OR REPLACE INTO player_stats (uuid, username, rebirths, balance, tokens, hoe_level, active_hoe, purchased_hoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-
+        String query = "INSERT OR REPLACE INTO player_stats (uuid, username, rebirths, balance, tokens, hoe_level, active_hoe, purchased_hoes, pet_type, pet_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setString(1, uuid.toString());
             stmt.setString(2, username);
@@ -90,13 +92,13 @@ public class DatabaseManager {
             stmt.setBigDecimal(5, tokens);
             stmt.setInt(6, hoeLevel);
             stmt.setString(7, activeHoe);
-            stmt.setString(8, String.join(",", purchasedHoes)); // Сохраняем купленные мотыги в строку
-
+            stmt.setString(8, String.join(",", purchasedHoes));
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
     // Получаем данные игрока
     public PlayerStats getPlayerStats(UUID uuid) {
@@ -187,6 +189,9 @@ public class DatabaseManager {
             e.printStackTrace();
         }
     }
+
+
+
     public int getHoeLevel(UUID playerId) {
         String query = "SELECT hoe_level FROM player_data WHERE uuid = ?";
         try (PreparedStatement stmt = connection.prepareStatement(query)) {

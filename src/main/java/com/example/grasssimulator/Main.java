@@ -1,16 +1,12 @@
 package com.example.grasssimulator;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-
 import com.example.grasssimulator.commands.AdminCommands;
 import com.example.grasssimulator.commands.BalanceCommand;
 import com.example.grasssimulator.commands.CreateLegendaryChestCommand;
 import com.example.grasssimulator.database.DatabaseManager;
 import com.example.grasssimulator.gui.HoeShopGUI;
 import com.example.grasssimulator.gui.HoeUpgradeGUI;
+import com.example.grasssimulator.gui.RebirthGUI;
 import com.example.grasssimulator.listeners.HoeListener;
 import com.example.grasssimulator.managers.*;
 import com.example.grasssimulator.stats.PlayerStats;
@@ -21,10 +17,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -55,6 +51,8 @@ public class Main extends JavaPlugin implements Listener {
     private HoeShopGUI hoeShopGUI;
     private LegendaryChestManager legendaryChestManager;
     private Random random = new Random();
+    private MenuStarManager menuStarManager;
+
 
     @Override
     public void onEnable() {
@@ -79,6 +77,13 @@ public class Main extends JavaPlugin implements Listener {
         hoeShopGUI = new HoeShopGUI(this, hoeManager, scoreboardManager);
         legendaryChestManager = new LegendaryChestManager(this);
         gameRulesManager = new GameRulesManager(this);
+
+        // Создаем экземпляр RebirthGUI
+        RebirthGUI rebirthGUI = new RebirthGUI(this, rebirthLevels, tokens, hoeLevels, scoreboardManager);
+        // Инициализация MenuStarManager
+        HoeUpgradeGUI hoeUpgradeGUI = new HoeUpgradeGUI(this, hoeLevels, scoreboardManager, hoeManager);
+        menuStarManager = new MenuStarManager(this, hoeShopGUI, hoeUpgradeGUI, rebirthGUI); // Передаем rebirthGUI
+
         // Удаляем все старые TextDisplay в мире при запуске плагина
         legendaryChestManager.removeAllTextDisplaysInWorld();
 
@@ -97,6 +102,7 @@ public class Main extends JavaPlugin implements Listener {
 
 
         // Регистрация событий
+
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new HoeListener(hoeManager), this);
 
@@ -270,6 +276,17 @@ public class Main extends JavaPlugin implements Listener {
             }
         }
     }
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent event) {
+        // Получаем материал блока, который игрок пытается поставить
+        Material blockType = event.getBlockPlaced().getType();
+
+        // Если это крюк, отменяем событие
+        if (blockType == Material.TRIPWIRE_HOOK) {
+            event.setCancelled(true); // Отменяем размещение блока
+            event.getPlayer().sendMessage("§cВы не можете ставить крюки!");
+        }
+    }
 
     @EventHandler
     public void onHungerDeplete(PlayerItemDamageEvent event) {
@@ -282,6 +299,8 @@ public class Main extends JavaPlugin implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         loadPlayerData(player); // Загружаем данные из базы
+
+        
 
         String activeHoe = hoeManager.getActiveHoe(player.getUniqueId()); // Получаем активную мотыгу
         int hoeLevel = getHoeLevel(player.getUniqueId());
