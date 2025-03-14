@@ -22,3 +22,4 @@ commands:
     description: Устанавливает игроку баланс
   settokens:
     description: Устанавливает игроку токены
+  createpetchest:

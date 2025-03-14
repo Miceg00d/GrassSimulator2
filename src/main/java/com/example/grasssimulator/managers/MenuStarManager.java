@@ -20,6 +20,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Arrays;
+import java.util.Set;
+import java.util.UUID;
 
 public class MenuStarManager implements Listener {
 
@@ -71,7 +73,7 @@ public class MenuStarManager implements Listener {
 
         ItemStack petMenu = new ItemStack(Material.BONE);
         ItemMeta petMenuMeta = petMenu.getItemMeta();
-        petMenuMeta.setDisplayName("§aМеню питомцев");
+        petMenuMeta.setDisplayName("§aУправление питомцами");
         petMenu.setItemMeta(petMenuMeta);
 
         // Создаем предметы для меню
@@ -120,8 +122,86 @@ public class MenuStarManager implements Listener {
                         rebirthGUI.openRebirthMenu(player); // Используем RebirthGUI для открытия меню ребитха
                         break;
                     case BONE:
-                        petGUI.openPetMenu(player); // Открываем меню питомцев
+                        openPetMenu(player); // Открываем меню питомцев
                         break;
+                }
+            }
+        }
+    }
+    public void openPetMenu(Player player) {
+        Inventory gui = Bukkit.createInventory(player, 27, "§6Управление питомцами");
+
+        UUID playerId = player.getUniqueId();
+        PetManager.PetData petData = plugin.getPetManager().getPetData(playerId);
+
+        // Получаем список всех выбитых питомцев
+        Set<PetManager.PetType> ownedPets = plugin.getPetManager().getOwnedPets(playerId);
+
+        // Если у игрока нет питомцев
+        if (ownedPets.isEmpty()) {
+            ItemStack noPetsItem = new ItemStack(Material.BARRIER);
+            ItemMeta noPetsMeta = noPetsItem.getItemMeta();
+            noPetsMeta.setDisplayName("§cНет доступных питомцев");
+            noPetsItem.setItemMeta(noPetsMeta);
+            gui.setItem(13, noPetsItem); // Размещаем барьер в центре GUI
+        } else {
+            // Если у игрока есть питомцы
+            int slot = 10; // Начинаем с 10 слота (вторая строка)
+            for (PetManager.PetType petType : ownedPets) {
+                ItemStack petItem = new ItemStack(petType.getHeadMaterial());
+                ItemMeta petMeta = petItem.getItemMeta();
+                petMeta.setDisplayName("§a" + petType.name()); // Название питомца
+
+                // Проверяем, одет ли питомец
+                boolean isPetActive = plugin.getPetManager().isPetActive(playerId) &&
+                        plugin.getPetManager().getActivePetType(playerId) == petType;
+                petMeta.setLore(Arrays.asList(
+                        isPetActive ? "§cПитомец одет. Хотите снять?" : "§aПитомец доступен. Хотите надеть?"
+                ));
+                petItem.setItemMeta(petMeta);
+                gui.setItem(slot, petItem); // Размещаем питомца в GUI
+                slot++;
+            }
+        }
+
+        player.openInventory(gui);
+    }
+
+    @EventHandler
+    public void onPetMenuClick(InventoryClickEvent event) {
+        if (event.getView().getTitle().equals("§6Управление питомцев")) {
+            event.setCancelled(true); // Отменяем событие, чтобы игрок не мог забрать предметы
+
+            Player player = (Player) event.getWhoClicked();
+            ItemStack clickedItem = event.getCurrentItem();
+
+            if (clickedItem != null && clickedItem.getType() != Material.AIR) {
+                UUID playerId = player.getUniqueId();
+                PetManager.PetType clickedPetType = null;
+
+                // Определяем, какой питомец был выбран
+                for (PetManager.PetType petType : PetManager.PetType.values()) {
+                    if (clickedItem.getType() == petType.getHeadMaterial()) {
+                        clickedPetType = petType;
+                        break;
+                    }
+                }
+
+                if (clickedPetType != null) {
+                    boolean isPetActive = plugin.getPetManager().isPetActive(playerId) &&
+                            plugin.getPetManager().getActivePetType(playerId) == clickedPetType;
+
+                    if (isPetActive) {
+                        // Если питомец одет, снимаем его
+                        plugin.getPetManager().removePet(player);
+                        player.sendMessage("§cПитомец " + clickedPetType.name() + " снят.");
+                    } else {
+                        // Если питомец не одет, надеваем его
+                        plugin.getPetManager().spawnPet(player, clickedPetType);
+                        player.sendMessage("§aПитомец " + clickedPetType.name() + " надет.");
+                    }
+
+                    player.closeInventory(); // Закрываем GUI после действия
                 }
             }
         }

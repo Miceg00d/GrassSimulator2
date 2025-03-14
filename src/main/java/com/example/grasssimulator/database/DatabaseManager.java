@@ -1,6 +1,7 @@
 package com.example.grasssimulator.database;
 
 import com.example.grasssimulator.Main;
+import com.example.grasssimulator.managers.PetManager;
 import com.example.grasssimulator.stats.PlayerStats;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -44,7 +45,9 @@ public class DatabaseManager {
                     "tokens DECIMAL(20, 2) DEFAULT 0, " +
                     "hoe_level INTEGER DEFAULT 1, " +
                     "active_hoe TEXT DEFAULT 'Обычная', " +
-                    "purchased_hoes TEXT DEFAULT)");
+                    "purchased_hoes TEXT DEFAULT '', " +
+                    "pet_type TEXT DEFAULT 'COMMON', " + // Добавляем колонку для типа питомца
+                    "pet_level INTEGER DEFAULT 1)"); // Добавляем колонку для уровня питомца
 
 
 
@@ -54,6 +57,8 @@ public class DatabaseManager {
             addColumnIfNotExists("tokens", "DECIMAL(20, 2) DEFAULT 0");
             addColumnIfNotExists("hoe_level", "INTEGER DEFAULT 1");
             addColumnIfNotExists("active_hoe", "TEXT DEFAULT 'Обычная'");
+            addColumnIfNotExists("pet_type", "TEXT DEFAULT 'COMMON'");
+            addColumnIfNotExists("pet_level", "INTEGER DEFAULT 1");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -82,8 +87,9 @@ public class DatabaseManager {
         }
     }
 
-    public void updatePlayerStats(UUID uuid, String username, int rebirths, BigDecimal balance, BigDecimal tokens, int hoeLevel, String activeHoe, Set<String> purchasedHoes) {
+    public void updatePlayerStats(UUID uuid, String username, int rebirths, BigDecimal balance, BigDecimal tokens, int hoeLevel, String activeHoe, Set<String> purchasedHoes, PetManager.PetData petData) {
         String query = "INSERT OR REPLACE INTO player_stats (uuid, username, rebirths, balance, tokens, hoe_level, active_hoe, purchased_hoes, pet_type, pet_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setString(1, uuid.toString());
             stmt.setString(2, username);
@@ -93,6 +99,8 @@ public class DatabaseManager {
             stmt.setInt(6, hoeLevel);
             stmt.setString(7, activeHoe);
             stmt.setString(8, String.join(",", purchasedHoes));
+            stmt.setString(9, petData.getPetType().name()); // Сохраняем тип питомца
+            stmt.setInt(10, petData.getLevel()); // Сохраняем уровень питомца
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

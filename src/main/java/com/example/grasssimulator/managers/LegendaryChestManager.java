@@ -14,6 +14,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -23,10 +24,7 @@ import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 public class LegendaryChestManager implements Listener {
 
@@ -34,6 +32,7 @@ public class LegendaryChestManager implements Listener {
     private Random random;
     private Map<Location, TextDisplay> chestTextDisplays; // Храним TextDisplay для каждого сундука
     private Map<TextDisplay, BukkitRunnable> rotationTasks; // Храним задачи для вращения текста
+    private Set<UUID> playersWithActiveInteraction = new HashSet<>(); // Храним UUID игроков, которые уже взаимодействуют с сундуком
 
     public LegendaryChestManager(Main plugin) {
         this.plugin = plugin;
@@ -137,26 +136,53 @@ public class LegendaryChestManager implements Listener {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null && event.getClickedBlock().getType() == Material.CHEST) {
+        // Проверяем, что событие вызвано для основной руки (не для дополнительной)
+        if (event.getHand() != EquipmentSlot.HAND) {
+            return; // Игнорируем событие для дополнительной руки
+        }
+
+        Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
+
+        // Проверяем, что игрок уже не взаимодействует с сундуком
+        if (playersWithActiveInteraction.contains(playerId)) {
+            return; // Игнорируем событие, если игрок уже взаимодействует
+        }
+
+        playersWithActiveInteraction.add(playerId); // Добавляем игрока в список активных взаимодействий
+        if (event.getClickedBlock() != null && event.getClickedBlock().getType() == Material.CHEST) {
             Location location = event.getClickedBlock().getLocation();
-            Player player = event.getPlayer();
+            String chestType = plugin.getChestType(location);
 
-            // Создаем сундук и TextDisplay для игрока
-            createLegendaryChest(location, player);
+            // Проверяем, что это легендарный сундук
+            if (chestType.equals("LEGENDARY")) {
+                event.setCancelled(true); // Отменяем стандартное действие
 
-            event.setCancelled(true);
-            openChestInfoGUI(player); // Открываем GUI с информацией
-        } else if (event.getAction() == Action.LEFT_CLICK_BLOCK && event.getClickedBlock() != null && event.getClickedBlock().getType() == Material.CHEST) {
-            Location location = event.getClickedBlock().getLocation();
-            Player player = event.getPlayer();
-
-            if (hasChestKey(player)) {
-                removeChestKey(player);
-                giveRandomReward(player); // Выдаем награду
-            } else {
-                player.sendMessage("§cУ вас нет ключа для открытия этого сундука!");
+                if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                    openChestInfoGUI(event.getPlayer()); // Открываем GUI с информацией о наградах
+                } else if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
+                    // Проверяем, что ключ находится в активной руке игрока
+                    ItemStack itemInHand = event.getPlayer().getInventory().getItemInMainHand();
+                    if (itemInHand != null && itemInHand.getType() == Material.TRIPWIRE_HOOK && itemInHand.hasItemMeta() && itemInHand.getItemMeta().getDisplayName().equals("§aКлюч от сундука")) {
+                        if (itemInHand.getAmount() > 0) {
+                            itemInHand.setAmount(itemInHand.getAmount() - 1); // Убираем один ключ из руки
+                            giveRandomReward(event.getPlayer()); // Выдаем случайную награду
+                        } else {
+                            event.getPlayer().sendMessage("§cУ вас нет ключа для открытия этого сундука!");
+                        }
+                    } else {
+                        event.getPlayer().sendMessage("§cУ вас нет ключа для открытия этого сундука!");
+                    }
+                }
             }
         }
+        // Убираем игрока из списка активных взаимодействий после завершения обработки
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                playersWithActiveInteraction.remove(playerId);
+            }
+        }.runTaskLater(plugin, 1); // Задержка в 1 тик
     }
 
     @EventHandler

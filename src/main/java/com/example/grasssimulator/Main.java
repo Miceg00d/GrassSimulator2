@@ -3,6 +3,7 @@ package com.example.grasssimulator;
 import com.example.grasssimulator.commands.AdminCommands;
 import com.example.grasssimulator.commands.BalanceCommand;
 import com.example.grasssimulator.commands.CreateLegendaryChestCommand;
+import com.example.grasssimulator.commands.CreatePetChestCommand;
 import com.example.grasssimulator.database.DatabaseManager;
 import com.example.grasssimulator.gui.HoeShopGUI;
 import com.example.grasssimulator.gui.HoeUpgradeGUI;
@@ -27,10 +28,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 public class Main extends JavaPlugin implements Listener {
 
@@ -52,6 +50,9 @@ public class Main extends JavaPlugin implements Listener {
     private LegendaryChestManager legendaryChestManager;
     private Random random = new Random();
     private MenuStarManager menuStarManager;
+    private PetManager petManager;
+    private PetChestManager petChestManager;
+    private Map<Location, String> chestTypes = new HashMap<>(); // Храним тип сундука по его Location
 
 
     @Override
@@ -77,6 +78,7 @@ public class Main extends JavaPlugin implements Listener {
         hoeShopGUI = new HoeShopGUI(this, hoeManager, scoreboardManager);
         legendaryChestManager = new LegendaryChestManager(this);
         gameRulesManager = new GameRulesManager(this);
+        petManager = new PetManager(this);
 
         // Создаем экземпляр RebirthGUI
         RebirthGUI rebirthGUI = new RebirthGUI(this, rebirthLevels, tokens, hoeLevels, scoreboardManager);
@@ -87,12 +89,20 @@ public class Main extends JavaPlugin implements Listener {
         // Удаляем все старые TextDisplay в мире при запуске плагина
         legendaryChestManager.removeAllTextDisplaysInWorld();
 
-        // Создание сундука при запуске плагина
-        Location chestLocation = new Location(Bukkit.getWorld("world"), 112, 103, -117); // Координаты сундука
-        legendaryChestManager.createLegendaryChest(chestLocation, null); // Передаем null, так как игрок не требуется
+        // Создание легендарного сундука при запуске плагина
+        Location legendaryChestLocation = new Location(Bukkit.getWorld("world"), 112, 103, -117); // Координаты легендарного сундука
+        legendaryChestManager.createLegendaryChest(legendaryChestLocation, null); // Передаем null, так как игрок не требуется
+        chestTypes.put(legendaryChestLocation, "LEGENDARY"); // Сохраняем тип сундука
 
+        // Создание отображения топ-игроков
         Location displayLocation = new Location(Bukkit.getWorld("world"), 125, 106, -132);
         topPlayersDisplay = new TopPlayersDisplay(databaseManager, displayLocation, this);
+
+        // Создание сундука с питомцами
+        Location petChestLocation = new Location(Bukkit.getWorld("world"), 122, 103, -117); // Координаты сундука с питомцами
+        petChestManager = new PetChestManager(this, petChestLocation);
+        petChestManager.createPetChest(petChestLocation); // Передаем координаты
+        chestTypes.put(petChestLocation, "PET"); // Сохраняем тип сундука
         getLogger().info("[GrassSimulator] Запуск сервера... Загружаем базу данных...");
 
 
@@ -102,11 +112,13 @@ public class Main extends JavaPlugin implements Listener {
 
 
         // Регистрация событий
-
+        getServer().getPluginManager().registerEvents(petChestManager, this);
+        getServer().getPluginManager().registerEvents(legendaryChestManager, this);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new HoeListener(hoeManager), this);
 
         // Регистрация команд
+        getCommand("createpetchest").setExecutor(new CreatePetChestCommand(petChestManager)); // Добавляем команду для создания сундука с питомцами
         getCommand("upgradehoe").setExecutor(new HoeUpgradeGUI(this, hoeLevels, scoreboardManager, hoeManager));
         getCommand("cogdafeodal").setExecutor(rebirthManager);
         getCommand("hoeshop").setExecutor(hoeShopGUI);
@@ -158,14 +170,16 @@ public class Main extends JavaPlugin implements Listener {
                     " | Ребитхи: " + stats.getRebirths() +
                     " | Уровень мотыги: " + stats.getHoeLevel());
 
-
             rebirthLevels.put(playerId, stats.getRebirths());
             tokens.put(playerId, stats.getTokens()); // Загружаем токены
             hoeLevels.put(playerId, stats.getHoeLevel()); // Устанавливаем загруженный уровень мотыги
             customEconomy.setBalance(playerId, stats.getBalance());
             hoeManager.setActiveHoe(playerId, stats.getActiveHoe()); // Устанавливаем активную мотыгу
-            // Загружаем купленные мотыги из базы
-            hoeManager.setPurchasedHoes(playerId, stats.getPurchasedHoes());
+            hoeManager.setPurchasedHoes(playerId, stats.getPurchasedHoes()); // Загружаем купленные мотыги
+
+            // Загружаем данные о питомце
+            PetManager.PetData petData = new PetManager.PetData(PetManager.PetType.COMMON); // По умолчанию обычный питомец
+            petManager.spawnPet(player, petData.getPetType()); // Создаем питомца
         } else {
             getLogger().warning("[DB] Данные для игрока " + player.getName() + " не найдены! Создаём новую запись...");
 
@@ -175,8 +189,13 @@ public class Main extends JavaPlugin implements Listener {
             hoeLevels.put(playerId, 1);
             customEconomy.setBalance(playerId, BigDecimal.ZERO);
             hoeManager.setActiveHoe(playerId, "Обычная");
+            hoeManager.setPurchasedHoes(playerId, new HashSet<>());
 
-            databaseManager.updatePlayerStats(playerId, player.getName(), 0, BigDecimal.ZERO, BigDecimal.ZERO, 1, "Обычная", new HashSet<>());
+            // Создаем данные о питомце по умолчанию
+            PetManager.PetData petData = new PetManager.PetData(PetManager.PetType.COMMON); // По умолчанию обычный питомец
+
+            // Сохраняем данные игрока в базу данных
+            databaseManager.updatePlayerStats(playerId, player.getName(), 0, BigDecimal.ZERO, BigDecimal.ZERO, 1, "Обычная", new HashSet<>(), petData);
         }
     }
 
@@ -189,9 +208,33 @@ public class Main extends JavaPlugin implements Listener {
         BigDecimal tokens = getTokens(playerId);
         int hoeLevel = getHoeLevel(playerId); // Загружаем актуальный уровень перед сохранением
         String activeHoe = hoeManager.getActiveHoe(playerId); // Получаем активную мотыгу
+        Set<String> purchasedHoes = hoeManager.getPurchasedHoes(playerId); // Получаем купленные мотыги
+
+        // Получаем данные о питомце
+        PetManager.PetData petData = petManager.getPetData(playerId); // Получаем данные о питомце
+        if (petData == null) {
+            petData = new PetManager.PetData(PetManager.PetType.COMMON); // Если данных нет, создаем питомца по умолчанию
+        }
 
         // Обновляем данные игрока в базе данных
-        databaseManager.updatePlayerStats(playerId, username, rebirths, balance, tokens, hoeLevel, activeHoe, hoeManager.getPurchasedHoes(playerId));
+        databaseManager.updatePlayerStats(playerId, username, rebirths, balance, tokens, hoeLevel, activeHoe, purchasedHoes, petData);
+    }
+    // Добавляем метод для получения PetManager
+    public PetManager getPetManager() {
+        return petManager;
+    }
+    public void createPetChest(Location location) {
+        chestTypes.put(location, "PET"); // Тип сундука - питомцы
+        petChestManager.createPetChest(location);
+    }
+
+    public void createLegendaryChest(Location location) {
+        chestTypes.put(location, "LEGENDARY"); // Тип сундука - легендарный
+        legendaryChestManager.createLegendaryChest(location, null);
+    }
+
+    public String getChestType(Location location) {
+        return chestTypes.getOrDefault(location, "UNKNOWN"); // Возвращаем тип сундука
     }
 
     @EventHandler
