@@ -121,6 +121,7 @@ public class PetManager {
         pets.add(petType);
         ownedPets.put(playerId, pets);
     }
+
     // Получаем список выбитых питомцев
     public Set<PetType> getOwnedPets(UUID playerId) {
         return ownedPets.getOrDefault(playerId, new HashSet<>());

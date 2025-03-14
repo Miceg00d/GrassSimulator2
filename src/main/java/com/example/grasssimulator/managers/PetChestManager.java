@@ -38,6 +38,7 @@ public class PetChestManager implements Listener {
         this.chestTextDisplays = new HashMap<>(); // Инициализируем карту
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
+
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (event.getView().getTitle().equals("§6Сундук с питомцами")) {
@@ -165,7 +166,7 @@ public class PetChestManager implements Listener {
                     }
                 }
             }
-        }
+
         // Убираем игрока из списка активных взаимодействий после завершения обработки
         new BukkitRunnable() {
             @Override
@@ -174,6 +175,7 @@ public class PetChestManager implements Listener {
             }
         }.runTaskLater(plugin, 1); // Задержка в 1 тик
     }
+}
 
     // Проверка наличия ключа (стрелы)
     private boolean hasPetKey(Player player) {

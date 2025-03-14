@@ -132,9 +132,6 @@ public class MenuStarManager implements Listener {
         Inventory gui = Bukkit.createInventory(player, 27, "§6Управление питомцами");
 
         UUID playerId = player.getUniqueId();
-        PetManager.PetData petData = plugin.getPetManager().getPetData(playerId);
-
-        // Получаем список всех выбитых питомцев
         Set<PetManager.PetType> ownedPets = plugin.getPetManager().getOwnedPets(playerId);
 
         // Если у игрока нет питомцев
@@ -170,7 +167,7 @@ public class MenuStarManager implements Listener {
     @EventHandler
     public void onPetMenuClick(InventoryClickEvent event) {
         if (event.getView().getTitle().equals("§6Управление питомцев")) {
-            event.setCancelled(true); // Отменяем событие, чтобы игрок не мог забрать предметы
+            event.setCancelled(true); // Отменяем событие, чтобы игрок не мог перемещать предметы
 
             Player player = (Player) event.getWhoClicked();
             ItemStack clickedItem = event.getCurrentItem();
